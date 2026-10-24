@@ -109,19 +109,26 @@ class SceneVisualizer:
         self.sim.addDrawingObjectItem(self.drawing_handle, line_segment)
         self.prev_pos = cur_pos
 
-    def ensure_large_floor(self, scale_factor=3.0):
+    def ensure_large_floor(self, target_size=50.0):
         """
-        Robotun boşluğa düşmemesi için CoppeliaSim zeminini (Floor) otomatik genişletir.
+        Robotun asla boşluğa düşmemesi için CoppeliaSim zeminini (Floor)
+        ve altındaki görsel kaplamayı (box) en az 50x50 metre boyutuna genişletir.
         """
         try:
             floor = self.sim.getObject('/Floor')
-            bb = self.sim.getShapeBB(floor)[0]
-            # Eğer zemin hala küçükse (örneğin 10m'den küçükse) büyüt
-            if bb[0] < 15.0:
-                self.sim.scaleObject(floor, scale_factor, scale_factor, 1.0)
-                print(f"[Zemin] Zemin {scale_factor} kat büyütüldü. Yeni boyut: {self.sim.getShapeBB(floor)[0]} m", flush=True)
-        except Exception:
-            pass
+            for child in self.sim.getObjectsInTree(floor):
+                try:
+                    bb = self.sim.getShapeBB(child)[0]
+                    if bb[0] < target_size:
+                        factor_x = target_size / bb[0]
+                        factor_y = target_size / bb[1]
+                        self.sim.scaleObject(child, factor_x, factor_y, 1.0)
+                except Exception:
+                    pass
+            self.sim.setObjectPosition(floor, -1, [0.0, 0.0, -0.1])
+            print(f"[Zemin] Zemin ve görsel döşeme {target_size}x{target_size} m boyutuna genişletildi.", flush=True)
+        except Exception as e:
+            print(f"[Zemin] Uyarı: {e}", flush=True)
 
     def cleanup(self):
         """Simülasyon bitince kırmızı çizgi izini, hedef kürelerini ve geçici engelleri temizler."""

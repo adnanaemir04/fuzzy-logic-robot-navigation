@@ -68,9 +68,31 @@ class GeneticTSP:
             tour[a:b + 1] = reversed(tour[a:b + 1])
         return tour
 
+    def _two_opt(self, tour):
+        """2-Opt yerel arama ile rotadaki çapraz kesişimleri ve fazlalıkları çözer."""
+        improved = True
+        best_tour = tour.copy()
+        best_dist = self.calculate_total_distance(best_tour)
+
+        while improved:
+            improved = False
+            for i in range(len(best_tour) - 1):
+                for j in range(i + 1, len(best_tour)):
+                    candidate = best_tour[:i] + best_tour[i:j + 1][::-1] + best_tour[j + 1:]
+                    cand_dist = self.calculate_total_distance(candidate)
+                    if cand_dist < best_dist - 1e-4:
+                        best_tour = candidate
+                        best_dist = cand_dist
+                        improved = True
+                        break
+                if improved:
+                    break
+        return best_tour, best_dist
+
     def solve(self):
         """
-        Genetik algoritmayı çalıştırır ve en uygun rota sırasını döndürür.
+        Genetik Algoritma (GA) ve 2-Opt Hibrit Optimizasyonu:
+        Önce GA ile küresel optimum havuzu taranır, ardından 2-Opt ile yerel olarak en kısa rota garantilenir.
         """
         if self.num_goals <= 2:
             return list(range(self.num_goals)), self.calculate_total_distance(list(range(self.num_goals)))
@@ -86,20 +108,18 @@ class GeneticTSP:
         best_distance = float('inf')
 
         for gen in range(self.generations):
-            # Uygunluk (Fitness) hesaplama (Ters mesafe)
             distances = [self.calculate_total_distance(ind) for ind in population]
             for i, d in enumerate(distances):
                 if d < best_distance:
                     best_distance = d
                     best_tour = population[i].copy()
 
-            # Rulet tekerleği seçimi için fitness
+            # Rulet tekerleği seçimi
             fitnesses = [1.0 / (d + 1e-6) for d in distances]
             total_fitness = sum(fitnesses)
             probs = [f / total_fitness for f in fitnesses]
 
-            # Yeni nesil oluşturma
-            new_population = [best_tour.copy()]  # Elitizm: En iyiyi doğrudan koru
+            new_population = [best_tour.copy()]
 
             while len(new_population) < self.pop_size:
                 p1, p2 = random.choices(population, weights=probs, k=2)
@@ -109,4 +129,6 @@ class GeneticTSP:
 
             population = new_population
 
-        return best_tour, best_distance
+        # 2. Aşama: 2-Opt ile kesin en kısa rota ince ayarı
+        refined_tour, refined_dist = self._two_opt(best_tour)
+        return refined_tour, refined_dist

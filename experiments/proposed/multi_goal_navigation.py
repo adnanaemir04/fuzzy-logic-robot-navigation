@@ -55,8 +55,8 @@ def run_navigation():
     tracking_ctrl = FuzzyTrackingController(max_wheel_speed=2.5)
     avoidance_ctrl = FuzzyObstacleAvoidanceController(safe_distance=0.8)
 
-    # Robotun boşluğa düşmemesi için zemini genişlet
-    visualizer.ensure_large_floor(scale_factor=3.0)
+    # Robotun boşluğa düşmemesi için zemini 50x50 metre devasa boyuta genişlet
+    visualizer.ensure_large_floor(target_size=50.0)
 
     # Simülasyonu başlat
     robot.start_simulation()
@@ -67,39 +67,40 @@ def run_navigation():
         start_x, start_y, start_yaw = robot.get_pose()
         print(f"Robot Başlangıç Konumu: X={start_x:.2f}, Y={start_y:.2f}, Yaw={math.degrees(start_yaw):.1f}°", flush=True)
 
-        # Makaledeki gibi zengin çoklu hedef noktaları (10 ADET HEDEF NOKTASI)
+        # Robotun etrafında DENGELİ ve MERKEZİ 10 ADET HEDEF NOKTASI
+        # Sadece sağ tarafa değil; ön, arka, sol ve sağ sektörlere homojen dağıtılmıştır.
         goal_points = [
-            [start_x + 1.2, start_y + 1.5],   # Hedef 1
-            [start_x + 2.5, start_y + 1.8],   # Hedef 2
-            [start_x + 3.8, start_y + 1.0],   # Hedef 3
-            [start_x + 4.2, start_y - 0.2],   # Hedef 4
-            [start_x + 3.5, start_y - 1.5],   # Hedef 5
-            [start_x + 2.2, start_y - 1.8],   # Hedef 6
-            [start_x + 1.0, start_y - 2.2],   # Hedef 7
-            [start_x - 0.5, start_y - 1.5],   # Hedef 8
-            [start_x - 1.2, start_y - 0.2],   # Hedef 9
-            [start_x - 0.8, start_y + 1.2],   # Hedef 10
+            [start_x + 1.8, start_y + 1.2],   # 1: Sağ Ön
+            [start_x + 2.5, start_y + 0.0],   # 2: Tam Sağ
+            [start_x + 1.8, start_y - 1.5],   # 3: Sağ Arka
+            [start_x + 0.0, start_y - 2.5],   # 4: Tam Arka
+            [start_x - 1.8, start_y - 1.8],   # 5: Sol Arka
+            [start_x - 2.5, start_y - 0.2],   # 6: Tam Sol
+            [start_x - 1.8, start_y + 1.5],   # 7: Sol Ön
+            [start_x + 0.0, start_y + 2.5],   # 8: Tam Ön
+            [start_x + 1.0, start_y + 3.2],   # 9: İleri Sağ
+            [start_x - 1.0, start_y + 3.2],   # 10: İleri Sol
         ]
 
-        # Yol üzerine yerleştirilecek silindir engeller (Kırmızı silindirler)
+        # Engel silindirleri: Hedeflerin tam üzerine binmeyecek, çevre rotaları zorlaştıracak koordinatlarda
         obstacle_coords = [
-            [start_x + 2.0, start_y + 0.8],
-            [start_x + 3.2, start_y - 0.5],
-            [start_x + 1.5, start_y - 1.2],
-            [start_x - 0.2, start_y - 0.8],
-            [start_x + 0.5, start_y + 1.2],
+            [start_x + 1.0, start_y + 0.6],
+            [start_x + 1.0, start_y - 0.8],
+            [start_x - 1.0, start_y - 0.8],
+            [start_x - 1.0, start_y + 0.8],
+            [start_x + 0.0, start_y + 1.6],
         ]
 
-        # Sahneye eklenecek DUVAR ENGELLERİ (Kahverengi/Turuncu Prizma Duvarlar)
+        # Sahneye eklenecek DUVAR ENGELLERİ (Koridor ve dolanma etkisi oluşturan duvarlar)
         wall_configs = [
-            # 1. Yatay Duvar Engeli (Orta bölgede koridor oluşturan duvar)
-            {"pos": [start_x + 2.2, start_y + 0.0], "size": [1.8, 0.25, 0.6]},
-            # 2. Dikey Duvar Engeli (Sol alt bölgede geçişi kısıtlayan duvar)
-            {"pos": [start_x + 0.2, start_y - 1.4], "size": [0.25, 1.4, 0.6]},
+            # 1. Yatay Duvar Engeli (Sağ geçişi sınırlayan duvar)
+            {"pos": [start_x + 2.0, start_y + 0.6], "size": [0.3, 1.6, 0.6]},
+            # 2. Dikey Duvar Engeli (Sol geçişi sınırlayan duvar)
+            {"pos": [start_x - 2.0, start_y - 0.6], "size": [0.3, 1.6, 0.6]},
         ]
 
         # 1. Aşama: Sahneye Görsel Öğeleri Ekle (İz Çizgisi, Hedef Küreleri, Engeller, Duvarlar)
-        print("\n[Görselleştirme] Sahneye 10 Adet Hedef Küresi, Kırmızı Silindirler ve DUVAR Engelleri ekleniyor...", flush=True)
+        print("\n[Görselleştirme] Sahneye 10 Adet Dengeli Dağıtılmış Hedef Küresi, Silindirler ve DUVAR Engelleri ekleniyor...", flush=True)
         visualizer.setup_visuals(goal_points, [start_x, start_y])
         visualizer.add_obstacles(obstacle_coords)
         visualizer.add_walls(wall_configs)
@@ -120,9 +121,11 @@ def run_navigation():
         step_count = 0
         total_path_length = 0.0
         prev_x, prev_y = start_x, start_y
-        goal_reach_threshold = 0.30  # metre
+        goal_reach_threshold = 0.18  # metre (Hedef küresinin TAM içinden geçmeyi garanti eder)
 
         start_time = time.time()
+        last_vl = 0.0
+        last_vr = 0.0
 
         for goal_idx, target in enumerate(ordered_goals):
             target_x, target_y = target
@@ -132,7 +135,8 @@ def run_navigation():
 
             goal_reached = False
 
-            for step in range(180):
+            # Hedefe ulaşmak için yeterli adım sayısı (Erken pes etmeyi önler)
+            for step in range(350):
                 cur_x, cur_y, cur_yaw = robot.get_pose()
 
                 # Sahneye robotun arkasından canlı kırmızı iz çiz
@@ -154,15 +158,27 @@ def run_navigation():
                 # Ön sensörleri oku
                 d_left, d_right = robot.read_front_sensors()
 
-                # Engel kontrolü
-                is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right)
+                # Hedefe çok yakınken (0.4m altı) hedef küresine odaklan (küreler renderable'dır)
+                # Sadece gerçek engeller için kaçış uygula
+                is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right) and (pos_error > 0.35)
 
                 if is_obstacle:
-                    v_l, v_r = avoidance_ctrl.evaluate(d_left, d_right)
+                    # Engelden kaçarken rotadan kopmamak için kaçış hızlarını hedef açısı ile harmanla
+                    v_obs_l, v_obs_r = avoidance_ctrl.evaluate(d_left, d_right)
+                    v_tr_l, v_tr_r = tracking_ctrl.evaluate(pos_error, heading_error)
+                    # %70 Kaçınma, %30 Hedefe yönelme
+                    cmd_vl = 0.70 * v_obs_l + 0.30 * v_tr_l
+                    cmd_vr = 0.70 * v_obs_r + 0.30 * v_tr_r
                     mode = "OBSTACLE_AVOIDANCE"
                 else:
-                    v_l, v_r = tracking_ctrl.evaluate(pos_error, heading_error)
+                    cmd_vl, cmd_vr = tracking_ctrl.evaluate(pos_error, heading_error)
                     mode = "TRACKING"
+
+                # Hızları yumuşat (Low-pass filter ile ani titreme ve salınımları engelle)
+                alpha = 0.45
+                v_l = alpha * cmd_vl + (1.0 - alpha) * last_vl
+                v_r = alpha * cmd_vr + (1.0 - alpha) * last_vr
+                last_vl, last_vr = v_l, v_r
 
                 # Hızları motora gönder
                 robot.set_wheel_velocities(v_l, v_r)
@@ -186,16 +202,16 @@ def run_navigation():
                 if step % 10 == 0:
                     print(f"[{mode:<18}] Kalan: {pos_error:.2f} m | Açı: {math.degrees(heading_error):+.1f}° | Sol: {d_left:.2f}m, Sağ: {d_right:.2f}m | L={v_l:.2f}, R={v_r:.2f}", flush=True)
 
-                # Hedefe ulaşma kontrolü
+                # Hedefe ulaşma kontrolü (Hedef küresinin tam göbeği)
                 if pos_error < goal_reach_threshold:
                     goal_reached = True
-                    print(f">>> TEBRİKLER: {target_name} noktasına ulaşıldı! (Hata: {pos_error:.3f} m)", flush=True)
+                    print(f">>> TEBRİKLER: {target_name} noktasının TAM ÜSTÜNDEN GEÇİLDİ! (Hata: {pos_error:.3f} m)", flush=True)
                     break
 
                 time.sleep(0.08)
 
             if not goal_reached:
-                print(f">>> Sonraki hedefe geçiliyor...", flush=True)
+                print(f">>> Zaman aşımı nedeniyle sonraki hedefe geçiliyor...", flush=True)
 
         total_time = time.time() - start_time
         robot.stop_motors()

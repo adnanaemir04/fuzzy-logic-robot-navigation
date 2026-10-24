@@ -63,17 +63,18 @@ class FuzzyTrackingController:
         mu_pos_large  = self._trapmf(d, 1.4, 2.0, 10.0, 11.0)
 
         # 2. Giriş 2: Heading Error üyelik dereceleri
-        # NB: Negative Big, NS: Negative Small, Z: Zero, PS: Positive Small, PB: Positive Big
-        mu_head_nb = self._trapmf(h, -1.2, -1.0, -0.6, -0.3)
-        mu_head_ns = self._trapmf(h, -0.5, -0.3, -0.1, 0.0)
-        mu_head_z  = self._trapmf(h, -0.15, -0.05, 0.05, 0.15)
-        mu_head_ps = self._trapmf(h, 0.0, 0.1, 0.3, 0.5)
-        mu_head_pb = self._trapmf(h, 0.3, 0.6, 1.0, 1.2)
+        # Titreşimi ve sağa-sola gereksiz salınımı önlemek için Zero bölgesine deadband uyguluyoruz:
+        # +/- 4 derece (~0.07 radyan / normalized 0.022) içindeki küçük açılar tam Z (Zero) kabul edilir.
+        mu_head_nb = self._trapmf(h, -1.2, -1.0, -0.6, -0.25)
+        mu_head_ns = self._trapmf(h, -0.45, -0.25, -0.10, -0.02)
+        mu_head_z  = self._trapmf(h, -0.06, -0.025, 0.025, 0.06)
+        mu_head_ps = self._trapmf(h, 0.02, 0.10, 0.25, 0.45)
+        mu_head_pb = self._trapmf(h, 0.25, 0.6, 1.0, 1.2)
 
         # Çıkış hız seviyeleri (Slow, Medium, Fast) [rad/s]
-        v_slow = 0.5
-        v_med  = 1.5
-        v_fast = 2.5
+        v_slow = 0.6
+        v_med  = 1.6
+        v_fast = 2.6
 
         # 15 Makale Kuralı (Mamdani Min-Max bileşimi):
         # Matematiksel ve Fiziksel Gerçeklik:
@@ -85,24 +86,24 @@ class FuzzyTrackingController:
         rules = []
 
         # POS LARGE (Uzak hedef)
-        rules.append((min(mu_pos_large, mu_head_nb),  v_fast, -v_med))  # Sert sağa dönüş
-        rules.append((min(mu_pos_large, mu_head_ns),  v_fast,  v_slow))  # Hafif sağa dönüş
-        rules.append((min(mu_pos_large, mu_head_z),   v_fast,  v_fast))  # Tam yol ileri
-        rules.append((min(mu_pos_large, mu_head_ps),  v_slow,  v_fast))  # Hafif sola dönüş
-        rules.append((min(mu_pos_large, mu_head_pb), -v_med,   v_fast))  # Sert sola dönüş
+        rules.append((min(mu_pos_large, mu_head_nb),  v_fast, -v_slow))  # Sağa dönüş
+        rules.append((min(mu_pos_large, mu_head_ns),  v_fast,  v_med))   # Yumuşak sağa kavis
+        rules.append((min(mu_pos_large, mu_head_z),   v_fast,  v_fast))  # Tam yol ileri (DÜZ)
+        rules.append((min(mu_pos_large, mu_head_ps),  v_med,   v_fast))  # Yumuşak sola kavis
+        rules.append((min(mu_pos_large, mu_head_pb), -v_slow,  v_fast))  # Sola dönüş
 
         # POS MEDIUM (Orta mesafe)
         rules.append((min(mu_pos_medium, mu_head_nb),  v_med, -v_slow))
         rules.append((min(mu_pos_medium, mu_head_ns),  v_med,  v_slow))
-        rules.append((min(mu_pos_medium, mu_head_z),   v_med,  v_med))
+        rules.append((min(mu_pos_medium, mu_head_z),   v_med,  v_med))   # Orta hızda düz
         rules.append((min(mu_pos_medium, mu_head_ps),  v_slow, v_med))
         rules.append((min(mu_pos_medium, mu_head_pb), -v_slow, v_med))
 
         # POS SMALL (Hedefe varış / hassas yanaşma)
         rules.append((min(mu_pos_small, mu_head_nb),  v_slow, -v_slow))
-        rules.append((min(mu_pos_small, mu_head_ns),  v_slow,  0.0))
+        rules.append((min(mu_pos_small, mu_head_ns),  v_slow,  0.2))
         rules.append((min(mu_pos_small, mu_head_z),   v_slow,  v_slow))
-        rules.append((min(mu_pos_small, mu_head_ps),  0.0,     v_slow))
+        rules.append((min(mu_pos_small, mu_head_ps),  0.2,     v_slow))
         rules.append((min(mu_pos_small, mu_head_pb), -v_slow,  v_slow))
 
         # Ağırlıklı ortalama (Weighted Average / Centroid)
@@ -120,8 +121,9 @@ class FuzzyObstacleAvoidanceController:
     """
     Ön sol ve ön sağ ultrasonik sensör verilerine dayanarak
     engelden kaçma manevrası üreten Mamdani denetleyicisi.
+    Gereksiz aşırı dolanmayı önlemek için güvenli mesafe 0.55m olarak optimize edilmiştir.
     """
-    def __init__(self, safe_distance=1.0):
+    def __init__(self, safe_distance=0.55):
         self.safe_distance = safe_distance
 
     def _trapmf(self, x, a, b, c, d):
@@ -136,7 +138,7 @@ class FuzzyObstacleAvoidanceController:
         return 0.0
 
     def is_obstacle_detected(self, d_left, d_right):
-        """1 metreden yakın engel var mı kontrolü (Makale Section 6)."""
+        """0.55 metreden yakın acil engel var mı kontrolü."""
         return min(d_left, d_right) < self.safe_distance
 
     def evaluate(self, d_left, d_right):
@@ -147,45 +149,39 @@ class FuzzyObstacleAvoidanceController:
         dl = np.clip(d_left, 0.0, self.safe_distance)
         dr = np.clip(d_right, 0.0, self.safe_distance)
 
-        # 5 Seviyeli Mesafe Üyelikleri (Very Close, Close, Medium, Far, Safe)
-        # VC: [0.0, 0.25], C: [0.2, 0.45], M: [0.4, 0.7], F: [0.65, 0.9], S: [0.85, 1.0+]
-        def get_memberships(d):
-            vc = self._trapmf(d, -0.1, 0.0, 0.15, 0.3)
-            c  = self._trapmf(d, 0.2, 0.3, 0.45, 0.55)
-            m  = self._trapmf(d, 0.45, 0.55, 0.7, 0.8)
-            f  = self._trapmf(d, 0.7, 0.8, 0.9, 1.0)
-            s  = self._trapmf(d, 0.85, 0.95, 2.0, 3.0)
-            return vc, c, m, f, s
+        # 3 Kademeli Mesafe Üyelikleri (Critical, Close, Safe)
+        # 0.55m altındaki yakın tehlikelerde aktif kaçış
+        mu_l_crit = self._trapmf(dl, -0.1, 0.0, 0.15, 0.28)
+        mu_l_close = self._trapmf(dl, 0.20, 0.28, 0.40, 0.52)
+        mu_l_safe  = self._trapmf(dl, 0.45, 0.52, 2.0, 3.0)
 
-        l_vc, l_c, l_m, l_f, l_s = get_memberships(dl)
-        r_vc, r_c, r_m, r_f, r_s = get_memberships(dr)
+        mu_r_crit = self._trapmf(dr, -0.1, 0.0, 0.15, 0.28)
+        mu_r_close = self._trapmf(dr, 0.20, 0.28, 0.40, 0.52)
+        mu_r_safe  = self._trapmf(dr, 0.45, 0.52, 2.0, 3.0)
 
-        v_fast = 2.0
-        v_turn = 1.6
-        v_rev  = -1.2
+        v_fwd  = 2.2
+        v_turn = 1.8
+        v_rev  = -1.0
 
         rules = []
 
-        # 1. Her iki taraf çok yakınsa (Dar boğaz veya kafa kafaya engel) -> Geri çekil ve sağa kaç
-        rules.append((min(l_vc, r_vc), v_turn, v_rev))
+        # 1. Her iki taraf kritik yakınsa -> Geri çekil ve sağa dön
+        rules.append((min(mu_l_crit, mu_r_crit), v_turn, v_rev))
 
-        # 2. Sol çok yakın / yakınsa -> Sağa sert dönüş (Sol motor ileri, Sağ motor geri/yavaş)
-        rules.append((l_vc, v_turn, v_rev))
-        rules.append((l_c,  v_turn, 0.0))
-        rules.append((l_m,  v_fast, 0.5))
+        # 2. Sol kritik/yakınsa -> Sağa dönerek kaç
+        rules.append((mu_l_crit, v_turn, v_rev))
+        rules.append((mu_l_close, v_fwd, 0.4))
 
-        # 3. Sağ çok yakın / yakınsa -> Sola sert dönüş (Sol motor geri/yavaş, Sağ motor ileri)
-        rules.append((r_vc, v_rev, v_turn))
-        rules.append((r_c,  0.0,    v_turn))
-        rules.append((r_m,  0.5,    v_fast))
+        # 3. Sağ kritik/yakınsa -> Sola dönerek kaç
+        rules.append((mu_r_crit, v_rev, v_turn))
+        rules.append((mu_r_close, 0.4, v_fwd))
 
-        # 4. Sol ve sağ orta/uzaksa
-        rules.append((min(l_f, r_f), v_fast, v_fast))
-        rules.append((min(l_s, r_s), v_fast, v_fast))
+        # 4. Güvenli bölge
+        rules.append((min(mu_l_safe, mu_r_safe), v_fwd, v_fwd))
 
         sum_w = sum(w for w, _, _ in rules)
         if sum_w < 1e-6:
-            return 1.5, 1.5
+            return 2.0, 2.0
 
         v_l = sum(w * vl for w, vl, _ in rules) / sum_w
         v_r = sum(w * vr for w, _, vr in rules) / sum_w
