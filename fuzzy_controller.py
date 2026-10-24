@@ -76,32 +76,34 @@ class FuzzyTrackingController:
         v_fast = 2.5
 
         # 15 Makale Kuralı (Mamdani Min-Max bileşimi):
-        # Hedef sağdaysa (h > 0 / PS, PB): Sol tekerlek daha hızlı döner (sağa yönelir)
-        # Hedef soldaysa (h < 0 / NS, NB): Sağ tekerlek daha hızlı döner (sola yönelir)
-        # Mesafe büyükse baz hız artar, mesafe küçükse baz hız azalır.
+        # Matematiksel ve Fiziksel Gerçeklik:
+        # CoppeliaSim'de Sol motor pozitif döndüğünde robot SAAT YÖNÜNÜN TERSİNE (SOLA, +Yaw) döner.
+        # Sağ motor pozitif döndüğünde robot SAAT YÖNÜNDE (SAĞA, -Yaw) döner.
+        # Hedef soldaysa (h > 0 / PS, PB): Sol motor yavaşlar/geri, Sağ motor ileri döner -> Robot SOLA döner.
+        # Hedef sağdaysa (h < 0 / NS, NB): Sol motor ileri, Sağ motor yavaşlar/geri döner -> Robot SAĞA döner.
 
         rules = []
 
         # POS LARGE (Uzak hedef)
-        rules.append((min(mu_pos_large, mu_head_nb), -v_med,  v_fast))  # Sert sol
-        rules.append((min(mu_pos_large, mu_head_ns),  v_slow, v_fast))  # Hafif sol
-        rules.append((min(mu_pos_large, mu_head_z),   v_fast, v_fast))  # Düz tam yol
-        rules.append((min(mu_pos_large, mu_head_ps),  v_fast, v_slow))  # Hafif sağ
-        rules.append((min(mu_pos_large, mu_head_pb),  v_fast, -v_med))  # Sert sağ
+        rules.append((min(mu_pos_large, mu_head_nb),  v_fast, -v_med))  # Sert sağa dönüş
+        rules.append((min(mu_pos_large, mu_head_ns),  v_fast,  v_slow))  # Hafif sağa dönüş
+        rules.append((min(mu_pos_large, mu_head_z),   v_fast,  v_fast))  # Tam yol ileri
+        rules.append((min(mu_pos_large, mu_head_ps),  v_slow,  v_fast))  # Hafif sola dönüş
+        rules.append((min(mu_pos_large, mu_head_pb), -v_med,   v_fast))  # Sert sola dönüş
 
         # POS MEDIUM (Orta mesafe)
-        rules.append((min(mu_pos_medium, mu_head_nb), -v_slow, v_med))
-        rules.append((min(mu_pos_medium, mu_head_ns),  v_slow, v_med))
+        rules.append((min(mu_pos_medium, mu_head_nb),  v_med, -v_slow))
+        rules.append((min(mu_pos_medium, mu_head_ns),  v_med,  v_slow))
         rules.append((min(mu_pos_medium, mu_head_z),   v_med,  v_med))
-        rules.append((min(mu_pos_medium, mu_head_ps),  v_med,  v_slow))
-        rules.append((min(mu_pos_medium, mu_head_pb),  v_med, -v_slow))
+        rules.append((min(mu_pos_medium, mu_head_ps),  v_slow, v_med))
+        rules.append((min(mu_pos_medium, mu_head_pb), -v_slow, v_med))
 
         # POS SMALL (Hedefe varış / hassas yanaşma)
-        rules.append((min(mu_pos_small, mu_head_nb), -v_slow, v_slow))
-        rules.append((min(mu_pos_small, mu_head_ns),  0.0,    v_slow))
-        rules.append((min(mu_pos_small, mu_head_z),   v_slow, v_slow))
-        rules.append((min(mu_pos_small, mu_head_ps),  v_slow, 0.0))
-        rules.append((min(mu_pos_small, mu_head_pb),  v_slow, -v_slow))
+        rules.append((min(mu_pos_small, mu_head_nb),  v_slow, -v_slow))
+        rules.append((min(mu_pos_small, mu_head_ns),  v_slow,  0.0))
+        rules.append((min(mu_pos_small, mu_head_z),   v_slow,  v_slow))
+        rules.append((min(mu_pos_small, mu_head_ps),  0.0,     v_slow))
+        rules.append((min(mu_pos_small, mu_head_pb), -v_slow,  v_slow))
 
         # Ağırlıklı ortalama (Weighted Average / Centroid)
         sum_weights = sum(w for w, _, _ in rules)

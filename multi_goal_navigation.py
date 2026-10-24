@@ -10,7 +10,7 @@ Tam Otonom Çoklu Hedef Navigasyon Sistemi:
 3. Her hedef için:
    - Engel yoksa -> Fuzzy Tracking Controller (Hedefe yönelme)
    - 1 metre içinde engel algılandığında -> Fuzzy Obstacle Avoidance Controller (En yüksek öncelik)
-4. Hedefe 0.25m yaklaşıldığında hedef tamamlanır ve sıradakine geçilir.
+4. Hedefe yaklaşıldığında hedef tamamlanır ve sıradakine geçilir.
 5. Tüm hedefler bitince robot güvenli bir şekilde başlangıç noktasına (depot) dönüp durur.
 6. Sonuçları CSV dosyasına kaydeder.
 """
@@ -35,7 +35,7 @@ def normalize_angle(angle):
 
 
 def run_navigation():
-    print("=== Pioneer P3-DX Çoklu Hedef Bulanık Navigasyon Başlatılıyor ===")
+    print("=== Pioneer P3-DX Çoklu Hedef Bulanık Navigasyon Başlatılıyor ===", flush=True)
     robot = PioneerRobot()
 
     # Denetleyicileri oluştur
@@ -44,39 +44,38 @@ def run_navigation():
 
     # Simülasyonu başlat
     robot.start_simulation()
+    time.sleep(0.5)
 
     try:
         # Robot başlangıç pozisyonunu al
         start_x, start_y, start_yaw = robot.get_pose()
-        print(f"Robot Başlangıç Konumu: X={start_x:.2f}, Y={start_y:.2f}, Yaw={math.degrees(start_yaw):.1f}°")
+        print(f"Robot Başlangıç Konumu: X={start_x:.2f}, Y={start_y:.2f}, Yaw={math.degrees(start_yaw):.1f}°", flush=True)
 
-        # Makaledeki gibi çoklu hedef noktaları (Örnek 4 hedefli görev)
+        # Makaledeki gibi çoklu hedef noktaları
         goal_points = [
-            [start_x + 1.5, start_y + 1.0],
-            [start_x + 2.5, start_y - 0.5],
-            [start_x + 1.0, start_y - 1.5],
-            [start_x - 0.5, start_y - 1.0],
+            [start_x + 1.5, start_y + 0.8],
+            [start_x + 1.5, start_y - 0.8],
+            [start_x + 0.5, start_y - 0.5],
         ]
 
         # 1. Aşama: GA ile En Kısa TSP Sırasını Çöz
-        print("\n[GA] Genetik Algoritma ile optimum hedef sırası hesaplanıyor...")
-        ga = GeneticTSP(start_pos=[start_x, start_y], goal_points=goal_points, pop_size=40, generations=60)
+        print("\n[GA] Genetik Algoritma ile optimum hedef sırası hesaplanıyor...", flush=True)
+        ga = GeneticTSP(start_pos=[start_x, start_y], goal_points=goal_points, pop_size=30, generations=30)
         best_tour, est_distance = ga.solve()
 
         ordered_goals = [goal_points[i] for i in best_tour]
-        # Son hedef olarak tekrar başlangıç noktasına dönüş
+        # Son hedef olarak tekrar başlangıç noktasına (depot) dönüş
         ordered_goals.append([start_x, start_y])
 
-        print(f"[GA] Optimum Rota Belirlendi: Ziyaret Sırası = {best_tour} -> Başlangıç")
-        print(f"[GA] Tahmini Toplam Rota Mesafesi: {est_distance:.2f} m\n")
+        print(f"[GA] Optimum Rota Belirlendi: Ziyaret Sırası = {best_tour} -> Başlangıç", flush=True)
+        print(f"[GA] Tahmini Toplam Rota Mesafesi: {est_distance:.2f} m\n", flush=True)
 
         # Metrik loglama için liste
         trajectory_log = []
         step_count = 0
-        collision_count = 0
         total_path_length = 0.0
         prev_x, prev_y = start_x, start_y
-        goal_reach_threshold = 0.25  # metre
+        goal_reach_threshold = 0.28  # metre (Pioneer robot yarıçapı ile uyumlu)
 
         start_time = time.time()
 
@@ -84,12 +83,11 @@ def run_navigation():
             target_x, target_y = target
             is_depot = (goal_idx == len(ordered_goals) - 1)
             target_name = "BAŞLANGIÇ (Depot)" if is_depot else f"Hedef #{goal_idx + 1} ({target_x:.2f}, {target_y:.2f})"
-            print(f"\n>>> YENİ GÖREV: {target_name} yönüne ilerleniyor...")
+            print(f"\n>>> YENİ GÖREV: {target_name} yönüne ilerleniyor...", flush=True)
 
             goal_reached = False
-            consecutive_near = 0
 
-            while not goal_reached:
+            for step in range(150):
                 cur_x, cur_y, cur_yaw = robot.get_pose()
 
                 # Yol uzunluğunu topla
@@ -140,41 +138,42 @@ def run_navigation():
                     "target_idx": goal_idx
                 })
 
-                if step_count % 10 == 0:
-                    print(f"[Adım {step_count:03d}] Mod: {mode:<18} | Kalan Mesafe: {pos_error:.2f} m | Açı Hatası: {math.degrees(heading_error):+.1f}° | Sol Sensör: {d_left:.2f}m, Sağ: {d_right:.2f}m")
+                if step % 10 == 0:
+                    print(f"[{mode:<18}] Kalan: {pos_error:.2f} m | Açı: {math.degrees(heading_error):+.1f}° | Hızlar: L={v_l:.2f}, R={v_r:.2f}", flush=True)
 
                 # Hedefe ulaşma kontrolü
                 if pos_error < goal_reach_threshold:
-                    consecutive_near += 1
-                    if consecutive_near >= 3:
-                        goal_reached = True
-                        print(f">>> TEBRİKLER: {target_name} noktasına ulaşıldı! (Hata: {pos_error:.3f} m)")
-                else:
-                    consecutive_near = 0
+                    goal_reached = True
+                    print(f">>> TEBRİKLER: {target_name} noktasına ulaşıldı! (Hata: {pos_error:.3f} m)", flush=True)
+                    break
 
-                time.sleep(0.05)
+                time.sleep(0.08)
+
+            if not goal_reached:
+                print(f">>> Zaman aşımı: {target_name} tamamlanamadı, sonraki hedefe geçiliyor...", flush=True)
 
         total_time = time.time() - start_time
         robot.stop_motors()
 
-        print("\n================ GÖREV ÖZETİ ================")
-        print(f"Toplam Tamamlanan Hedef : {len(ordered_goals)} / {len(ordered_goals)}")
-        print(f"Toplam Harcanan Süre    : {total_time:.2f} saniye")
-        print(f"Toplam Kat Edilen Yol   : {total_path_length:.2f} metre")
-        print(f"Toplam Adım Sayısı      : {step_count}")
-        print("=============================================")
+        print("\n================ GÖREV ÖZETİ ================", flush=True)
+        print(f"Toplam Hedef Noktası   : {len(ordered_goals)}", flush=True)
+        print(f"Toplam Harcanan Süre   : {total_time:.2f} saniye", flush=True)
+        print(f"Toplam Kat Edilen Yol  : {total_path_length:.2f} metre", flush=True)
+        print(f"Toplam Adım Sayısı     : {step_count}", flush=True)
+        print("=============================================", flush=True)
 
         # CSV dosyasına kaydet
         csv_filename = "navigation_results.csv"
-        with open(csv_filename, mode="w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=trajectory_log[0].keys())
-            writer.writeheader()
-            writer.writerows(trajectory_log)
-        print(f"Deney sonuçları '{csv_filename}' dosyasına kaydedildi.")
+        if trajectory_log:
+            with open(csv_filename, mode="w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=trajectory_log[0].keys())
+                writer.writeheader()
+                writer.writerows(trajectory_log)
+            print(f"Deney sonuçları '{csv_filename}' dosyasına kaydedildi.", flush=True)
 
     finally:
         robot.stop_simulation()
-        print("Simülasyon kapatıldı.")
+        print("Simülasyon durduruldu.", flush=True)
 
 
 if __name__ == "__main__":
