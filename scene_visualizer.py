@@ -109,17 +109,43 @@ class SceneVisualizer:
         self.sim.addDrawingObjectItem(self.drawing_handle, line_segment)
         self.prev_pos = cur_pos
 
+    def ensure_large_floor(self, scale_factor=3.0):
+        """
+        Robotun boşluğa düşmemesi için CoppeliaSim zeminini (Floor) otomatik genişletir.
+        """
+        try:
+            floor = self.sim.getObject('/Floor')
+            bb = self.sim.getShapeBB(floor)[0]
+            # Eğer zemin hala küçükse (örneğin 10m'den küçükse) büyüt
+            if bb[0] < 15.0:
+                self.sim.scaleObject(floor, scale_factor, scale_factor, 1.0)
+                print(f"[Zemin] Zemin {scale_factor} kat büyütüldü. Yeni boyut: {self.sim.getShapeBB(floor)[0]} m", flush=True)
+        except Exception:
+            pass
+
     def cleanup(self):
-        """Simülasyon bitince geçici marker ve engelleri temizler."""
+        """Simülasyon bitince kırmızı çizgi izini, hedef kürelerini ve geçici engelleri temizler."""
+        # 1. Kırmızı yol izini (drawing object) tamamen sahneden kaldır
+        if self.drawing_handle is not None:
+            try:
+                self.sim.removeDrawingObject(self.drawing_handle)
+            except Exception:
+                pass
+            self.drawing_handle = None
+
+        # 2. Hedef kürelerini kaldır
         for h in self.goal_marker_handles:
             try:
                 self.sim.removeObject(h)
             except Exception:
                 pass
+        self.goal_marker_handles.clear()
+
+        # 3. Geçici engelleri kaldır
         for h in self.obstacle_handles:
             try:
                 self.sim.removeObject(h)
             except Exception:
                 pass
-        self.goal_marker_handles.clear()
         self.obstacle_handles.clear()
+        self.prev_pos = None

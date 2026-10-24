@@ -46,6 +46,9 @@ def run_navigation():
     tracking_ctrl = FuzzyTrackingController(max_wheel_speed=2.5)
     avoidance_ctrl = FuzzyObstacleAvoidanceController(safe_distance=0.8)
 
+    # Robotun boşluğa düşmemesi için zemini genişlet
+    visualizer.ensure_large_floor(scale_factor=3.0)
+
     # Simülasyonu başlat
     robot.start_simulation()
     time.sleep(0.5)
@@ -205,8 +208,11 @@ def run_navigation():
             print(f"Deney sonuçları '{csv_filename}' dosyasına kaydedildi.", flush=True)
 
     finally:
+        robot.stop_motors()
+        # Simülasyon bittiğinde yerdeki kırmızı çizgiyi, markerları ve engelleri tamamen temizle:
+        visualizer.cleanup()
         robot.stop_simulation()
-        print("Simülasyon tamamlandı.", flush=True)
+        print("Simülasyon tamamlandı ve yerdeki iz çizgisi temizlendi.", flush=True)
 
 
 if __name__ == "__main__":
