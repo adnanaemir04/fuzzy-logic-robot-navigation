@@ -15,14 +15,25 @@ class SceneVisualizer:
         self.goal_marker_handles = []
         self.prev_pos = None
 
-    def setup_visuals(self, goal_points, start_pos):
-        """Çizgi nesnesini ve hedef kürelerini oluşturur."""
-        # Eski çizim nesnesi varsa temizle
+    def _clear_all_drawing_objects(self):
+        """Sahnedeki tüm çizim nesnelerini (kırmızı iz çizgilerini) siler."""
         if self.drawing_handle is not None:
             try:
                 self.sim.removeDrawingObject(self.drawing_handle)
             except Exception:
                 pass
+            self.drawing_handle = None
+        # Olası eski oturumlardan kalan tüm çizim handles havuzunu temizle
+        for h in range(50):
+            try:
+                self.sim.removeDrawingObject(h)
+            except Exception:
+                pass
+
+    def setup_visuals(self, goal_points, start_pos):
+        """Çizgi nesnesini ve hedef kürelerini oluşturur."""
+        # 0. Sahnedeki eski çizgi kalıntılarını tamamen temizle
+        self._clear_all_drawing_objects()
 
         # 1. Robotun gittiği yolu çizen Çizgi Nesnesi (Canlı Kırmızı-Sarı Kalın İz)
         # Format: lines, lineSize=5, color=[1.0, 0.2, 0.0] (parlak turuncu-kırmızı)
@@ -115,13 +126,8 @@ class SceneVisualizer:
 
     def cleanup(self):
         """Simülasyon bitince kırmızı çizgi izini, hedef kürelerini ve geçici engelleri temizler."""
-        # 1. Kırmızı yol izini (drawing object) tamamen sahneden kaldır
-        if self.drawing_handle is not None:
-            try:
-                self.sim.removeDrawingObject(self.drawing_handle)
-            except Exception:
-                pass
-            self.drawing_handle = None
+        # 1. Kırmızı yol izini tamamen sahneden kaldır
+        self._clear_all_drawing_objects()
 
         # 2. Hedef kürelerini kaldır
         for h in self.goal_marker_handles:

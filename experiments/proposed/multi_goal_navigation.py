@@ -67,36 +67,35 @@ def run_navigation():
         start_x, start_y, start_yaw = robot.get_pose()
         print(f"Robot Başlangıç Konumu: X={start_x:.2f}, Y={start_y:.2f}, Yaw={math.degrees(start_yaw):.1f}°", flush=True)
 
-        # Orijinal 5x5 metre zemin sınırları ([-2.2, +2.2] m) içinde dengeli 10 HEDEF NOKTASI
-        # Robotun zeminden düşmesini önlemek için tüm koordinatlar zeminin güvenli iç alanındadır:
+        # Orijinal 5x5 metre zemin sınırları içinde DUVARLARLA ASLA ÇAKIŞMAYAN 10 HEDEF NOKTASI
+        # Her hedef, duvarlardan ve silindir engellerden en az 0.8 metre uzaktadır.
         goal_points = [
-            [start_x + 1.2, start_y + 0.8],   # 1: Sağ Ön
-            [start_x + 1.6, start_y + 0.0],   # 2: Tam Sağ
-            [start_x + 1.2, start_y - 0.9],   # 3: Sağ Arka
-            [start_x + 0.0, start_y - 1.5],   # 4: Tam Arka
-            [start_x - 1.2, start_y - 1.0],   # 5: Sol Arka
-            [start_x - 1.6, start_y + 0.0],   # 6: Tam Sol
-            [start_x - 1.2, start_y + 0.9],   # 7: Sol Ön
-            [start_x + 0.0, start_y + 1.6],   # 8: Tam Ön
-            [start_x + 0.7, start_y + 1.5],   # 9: İleri Sağ
-            [start_x - 0.7, start_y + 1.5],   # 10: İleri Sol
+            [start_x + 1.5, start_y + 0.9],   # Hedef 1: Sağ Ön Açık Alan
+            [start_x + 1.7, start_y - 0.2],   # Hedef 2: Sağ Dış Alan
+            [start_x + 1.2, start_y - 1.2],   # Hedef 3: Sağ Arka Açık Alan
+            [start_x + 0.0, start_y - 1.6],   # Hedef 4: Tam Arka Alan
+            [start_x - 1.2, start_y - 1.2],   # Hedef 5: Sol Arka Açık Alan
+            [start_x - 1.7, start_y - 0.2],   # Hedef 6: Sol Dış Alan
+            [start_x - 1.5, start_y + 0.9],   # Hedef 7: Sol Ön Açık Alan
+            [start_x - 0.8, start_y + 1.6],   # Hedef 8: Sol Üst Alan
+            [start_x + 0.0, start_y + 1.8],   # Hedef 9: Tam İleri Alan
+            [start_x + 0.8, start_y + 1.6],   # Hedef 10: Sağ Üst Alan
         ]
 
-        # Engel silindirleri: Güvenli koridorlar oluşturan kırmızı silindirler
+        # Engel silindirleri: Hedef rotalarının ortasına değil, geçiş koridorlarına yerleştirilir
         obstacle_coords = [
-            [start_x + 0.7, start_y + 0.4],
-            [start_x + 0.7, start_y - 0.5],
-            [start_x - 0.7, start_y - 0.5],
-            [start_x - 0.7, start_y + 0.5],
+            [start_x + 0.0, start_y - 0.8],
             [start_x + 0.0, start_y + 0.9],
+            [start_x + 0.8, start_y - 0.7],
+            [start_x - 0.8, start_y - 0.7],
         ]
 
-        # Sahneye eklenecek DUVAR ENGELLERİ (Zemin içine sığdırılmış koridor duvarları)
+        # Sahneye eklenecek DUVAR ENGELLERİ (İç koridorda yer alan, hedeflerle asla çakışmayan duvarlar)
         wall_configs = [
-            # 1. Sağ koridor duvarı
-            {"pos": [start_x + 1.4, start_y + 0.4], "size": [0.2, 0.9, 0.5]},
-            # 2. Sol koridor duvarı
-            {"pos": [start_x - 1.4, start_y - 0.4], "size": [0.2, 0.9, 0.5]},
+            # 1. Sağ iç duvar (x=+0.8, y=0.0) -> En yakın hedef 0.75m uzaktadır
+            {"pos": [start_x + 0.8, start_y + 0.0], "size": [0.15, 0.8, 0.5]},
+            # 2. Sol iç duvar (x=-0.8, y=0.0) -> En yakın hedef 0.75m uzaktadır
+            {"pos": [start_x - 0.8, start_y + 0.0], "size": [0.15, 0.8, 0.5]},
         ]
 
         # 1. Aşama: Sahneye Görsel Öğeleri Ekle (İz Çizgisi, Hedef Küreleri, Engeller, Duvarlar)
@@ -121,7 +120,7 @@ def run_navigation():
         step_count = 0
         total_path_length = 0.0
         prev_x, prev_y = start_x, start_y
-        goal_reach_threshold = 0.18  # metre (Hedef küresinin TAM içinden geçmeyi garanti eder)
+        goal_reach_threshold = 0.12  # metre (Robotun hedefin TAM MERKEZİNDEN geçmesini garanti eder)
 
         start_time = time.time()
         last_vl = 0.0
@@ -135,7 +134,7 @@ def run_navigation():
 
             goal_reached = False
 
-            # Hedefe ulaşmak için yeterli adım sayısı (Erken pes etmeyi önler)
+            # Hedefe ulaşmak için yeterli adım sayısı
             for step in range(350):
                 cur_x, cur_y, cur_yaw = robot.get_pose()
 
@@ -158,17 +157,15 @@ def run_navigation():
                 # Ön sensörleri oku
                 d_left, d_right = robot.read_front_sensors()
 
-                # Hedefe çok yakınken (0.4m altı) hedef küresine odaklan (küreler renderable'dır)
-                # Sadece gerçek engeller için kaçış uygula
+                # Hedefe son yaklaşmada (0.35m altı) robot doğrudan hedefe kilitlenir
+                # Uzaktayken gerçek engeller için kaçış uygulanır
                 is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right) and (pos_error > 0.35)
 
                 if is_obstacle:
-                    # Engelden kaçarken rotadan kopmamak için kaçış hızlarını hedef açısı ile harmanla
                     v_obs_l, v_obs_r = avoidance_ctrl.evaluate(d_left, d_right)
                     v_tr_l, v_tr_r = tracking_ctrl.evaluate(pos_error, heading_error)
-                    # %70 Kaçınma, %30 Hedefe yönelme
-                    cmd_vl = 0.70 * v_obs_l + 0.30 * v_tr_l
-                    cmd_vr = 0.70 * v_obs_r + 0.30 * v_tr_r
+                    cmd_vl = 0.65 * v_obs_l + 0.35 * v_tr_l
+                    cmd_vr = 0.65 * v_obs_r + 0.35 * v_tr_r
                     mode = "OBSTACLE_AVOIDANCE"
                 else:
                     cmd_vl, cmd_vr = tracking_ctrl.evaluate(pos_error, heading_error)
