@@ -63,16 +63,34 @@ class SceneVisualizer:
 
     def add_obstacles(self, obstacle_coords):
         """
-        Sahneye makaledeki gibi fiziksel ve görsel engeller ekler (Kırmızı silindirler).
+        Sahneye silindir engeller ekler (Kırmızı silindirler).
         obstacle_coords: [[x1, y1], [x2, y2], ...]
         """
         for i, (ox, oy) in enumerate(obstacle_coords):
             try:
-                obs = self.sim.createPrimitiveShape(self.sim.primitiveshape_cylinder, [0.35, 0.35, 0.6])
+                obs = self.sim.createPrimitiveShape(self.sim.primitiveshape_cylinder, [0.4, 0.4, 0.6])
                 self.sim.setObjectPosition(obs, -1, [float(ox), float(oy), 0.3])
-                self.sim.setShapeColor(obs, '', self.sim.colorcomponent_ambient_diffuse, [0.9, 0.1, 0.1])  # Kırmızı engel
+                self.sim.setShapeColor(obs, '', self.sim.colorcomponent_ambient_diffuse, [0.9, 0.1, 0.1])  # Kırmızı silindir
                 self.sim.setObjectAlias(obs, f"VisualObstacle_{i+1}")
                 self.obstacle_handles.append(obs)
+            except Exception:
+                pass
+
+    def add_walls(self, wall_configs):
+        """
+        Sahneye dikdörtgen prizma / duvar engelleri ekler.
+        wall_configs: [{'pos': [x, y], 'size': [lx, ly, lz]}, ...]
+        """
+        for i, w in enumerate(wall_configs):
+            try:
+                wx, wy = w['pos']
+                sx, sy, sz = w.get('size', [1.5, 0.25, 0.6])
+                wall = self.sim.createPrimitiveShape(self.sim.primitiveshape_cuboid, [float(sx), float(sy), float(sz)])
+                self.sim.setObjectPosition(wall, -1, [float(wx), float(wy), sz / 2.0])
+                # Tuğla / koyu turuncu-kahve duvar rengi
+                self.sim.setShapeColor(wall, '', self.sim.colorcomponent_ambient_diffuse, [0.85, 0.4, 0.1])
+                self.sim.setObjectAlias(wall, f"WallObstacle_{i+1}")
+                self.obstacle_handles.append(wall)
             except Exception:
                 pass
 

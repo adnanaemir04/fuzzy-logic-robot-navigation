@@ -55,27 +55,46 @@ def run_navigation():
         start_x, start_y, start_yaw = robot.get_pose()
         print(f"Robot Başlangıç Konumu: X={start_x:.2f}, Y={start_y:.2f}, Yaw={math.degrees(start_yaw):.1f}°", flush=True)
 
-        # Çoklu hedef noktaları
+        # Makaledeki gibi zengin çoklu hedef noktaları (10 ADET HEDEF NOKTASI)
         goal_points = [
-            [start_x + 1.8, start_y + 1.0],
-            [start_x + 1.8, start_y - 1.0],
-            [start_x + 0.6, start_y - 0.6],
+            [start_x + 1.2, start_y + 1.5],   # Hedef 1
+            [start_x + 2.5, start_y + 1.8],   # Hedef 2
+            [start_x + 3.8, start_y + 1.0],   # Hedef 3
+            [start_x + 4.2, start_y - 0.2],   # Hedef 4
+            [start_x + 3.5, start_y - 1.5],   # Hedef 5
+            [start_x + 2.2, start_y - 1.8],   # Hedef 6
+            [start_x + 1.0, start_y - 2.2],   # Hedef 7
+            [start_x - 0.5, start_y - 1.5],   # Hedef 8
+            [start_x - 1.2, start_y - 0.2],   # Hedef 9
+            [start_x - 0.8, start_y + 1.2],   # Hedef 10
         ]
 
-        # Yol üzerine yerleştirilecek görünür engeller (Kırmızı silindirler)
+        # Yol üzerine yerleştirilecek silindir engeller (Kırmızı silindirler)
         obstacle_coords = [
-            [start_x + 1.8, start_y + 0.0],   # Hedef 1 ile 2 arasındaki rotada engel
-            [start_x + 1.1, start_y - 0.8],   # Hedef 2 ile 3 arasındaki rotada engel
+            [start_x + 2.0, start_y + 0.8],
+            [start_x + 3.2, start_y - 0.5],
+            [start_x + 1.5, start_y - 1.2],
+            [start_x - 0.2, start_y - 0.8],
+            [start_x + 0.5, start_y + 1.2],
         ]
 
-        # 1. Aşama: Sahneye Görsel Öğeleri Ekle (İz Çizgisi, Hedef Küreleri, Engeller)
-        print("\n[Görselleştirme] Sahneye Hedef Küreleri, Engeller ve Canlı İz Çizgisi ekleniyor...", flush=True)
+        # Sahneye eklenecek DUVAR ENGELLERİ (Kahverengi/Turuncu Prizma Duvarlar)
+        wall_configs = [
+            # 1. Yatay Duvar Engeli (Orta bölgede koridor oluşturan duvar)
+            {"pos": [start_x + 2.2, start_y + 0.0], "size": [1.8, 0.25, 0.6]},
+            # 2. Dikey Duvar Engeli (Sol alt bölgede geçişi kısıtlayan duvar)
+            {"pos": [start_x + 0.2, start_y - 1.4], "size": [0.25, 1.4, 0.6]},
+        ]
+
+        # 1. Aşama: Sahneye Görsel Öğeleri Ekle (İz Çizgisi, Hedef Küreleri, Engeller, Duvarlar)
+        print("\n[Görselleştirme] Sahneye 10 Adet Hedef Küresi, Kırmızı Silindirler ve DUVAR Engelleri ekleniyor...", flush=True)
         visualizer.setup_visuals(goal_points, [start_x, start_y])
         visualizer.add_obstacles(obstacle_coords)
+        visualizer.add_walls(wall_configs)
 
-        # 2. Aşama: GA ile En Kısa TSP Sırasını Çöz
-        print("\n[GA] Genetik Algoritma ile optimum hedef sırası hesaplanıyor...", flush=True)
-        ga = GeneticTSP(start_pos=[start_x, start_y], goal_points=goal_points, pop_size=30, generations=30)
+        # 2. Aşama: GA ile En Kısa TSP Sırasını Çöz (10 Hedefli TSP)
+        print("\n[GA] 10 Hedefli TSP Problemi için Genetik Algoritma çalıştırılıyor...", flush=True)
+        ga = GeneticTSP(start_pos=[start_x, start_y], goal_points=goal_points, pop_size=60, generations=80)
         best_tour, est_distance = ga.solve()
 
         ordered_goals = [goal_points[i] for i in best_tour]
