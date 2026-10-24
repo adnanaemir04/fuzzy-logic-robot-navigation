@@ -71,10 +71,10 @@ class FuzzyTrackingController:
         mu_head_ps = self._trapmf(h, 0.02, 0.10, 0.25, 0.45)
         mu_head_pb = self._trapmf(h, 0.25, 0.6, 1.0, 1.2)
 
-        # Çıkış hız seviyeleri (Slow, Medium, Fast) [rad/s]
-        v_slow = 0.6
-        v_med  = 1.6
-        v_fast = 2.6
+        # Çıkış hız seviyeleri (En hızlı otonom sürüş) [rad/s]
+        v_slow = 1.4
+        v_med  = 2.4
+        v_fast = 3.6
 
         # 15 Makale Kuralı (Mamdani Min-Max bileşimi):
         # Matematiksel ve Fiziksel Gerçeklik:
@@ -85,26 +85,27 @@ class FuzzyTrackingController:
 
         rules = []
 
-        # POS LARGE (Uzak hedef)
+        # POS LARGE & MEDIUM & SMALL (Robot hedefe doğru en hızlı şekilde akar)
+        # Uzak hedef
         rules.append((min(mu_pos_large, mu_head_nb),  v_fast, -v_slow))  # Sağa dönüş
         rules.append((min(mu_pos_large, mu_head_ns),  v_fast,  v_med))   # Yumuşak sağa kavis
-        rules.append((min(mu_pos_large, mu_head_z),   v_fast,  v_fast))  # Tam yol ileri (DÜZ)
+        rules.append((min(mu_pos_large, mu_head_z),   v_fast,  v_fast))  # Tam yol ileri (En Hızlı)
         rules.append((min(mu_pos_large, mu_head_ps),  v_med,   v_fast))  # Yumuşak sola kavis
         rules.append((min(mu_pos_large, mu_head_pb), -v_slow,  v_fast))  # Sola dönüş
 
-        # POS MEDIUM (Orta mesafe)
-        rules.append((min(mu_pos_medium, mu_head_nb),  v_med, -v_slow))
-        rules.append((min(mu_pos_medium, mu_head_ns),  v_med,  v_slow))
-        rules.append((min(mu_pos_medium, mu_head_z),   v_med,  v_med))   # Orta hızda düz
-        rules.append((min(mu_pos_medium, mu_head_ps),  v_slow, v_med))
-        rules.append((min(mu_pos_medium, mu_head_pb), -v_slow, v_med))
+        # Orta mesafe
+        rules.append((min(mu_pos_medium, mu_head_nb),  v_fast, -v_slow))
+        rules.append((min(mu_pos_medium, mu_head_ns),  v_fast,  v_med))
+        rules.append((min(mu_pos_medium, mu_head_z),   v_fast,  v_fast))  # Orta mesafede de tam yol ileri
+        rules.append((min(mu_pos_medium, mu_head_ps),  v_med,   v_fast))
+        rules.append((min(mu_pos_medium, mu_head_pb), -v_slow,  v_fast))
 
-        # POS SMALL (Hedefe varış / hassas yanaşma)
-        rules.append((min(mu_pos_small, mu_head_nb),  v_slow, -v_slow))
-        rules.append((min(mu_pos_small, mu_head_ns),  v_slow,  0.2))
-        rules.append((min(mu_pos_small, mu_head_z),   v_slow,  v_slow))
-        rules.append((min(mu_pos_small, mu_head_ps),  0.2,     v_slow))
-        rules.append((min(mu_pos_small, mu_head_pb), -v_slow,  v_slow))
+        # Yakın mesafe (Hedefin üstünden hız kesmeden tam gaz geçiş)
+        rules.append((min(mu_pos_small, mu_head_nb),  v_med,  -v_slow))
+        rules.append((min(mu_pos_small, mu_head_ns),  v_fast,  v_slow))
+        rules.append((min(mu_pos_small, mu_head_z),   v_fast,  v_fast))  # Hedefin tam içinden yüksek hızla geç
+        rules.append((min(mu_pos_small, mu_head_ps),  v_slow,  v_fast))
+        rules.append((min(mu_pos_small, mu_head_pb), -v_slow,  v_med))
 
         # Ağırlıklı ortalama (Weighted Average / Centroid)
         sum_weights = sum(w for w, _, _ in rules)

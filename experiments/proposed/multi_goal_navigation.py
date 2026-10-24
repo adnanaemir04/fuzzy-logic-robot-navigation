@@ -67,19 +67,10 @@ def run_navigation():
         start_x, start_y, start_yaw = robot.get_pose()
         print(f"Robot Başlangıç Konumu: X={start_x:.2f}, Y={start_y:.2f}, Yaw={math.degrees(start_yaw):.1f}°", flush=True)
 
-        # TAMAMEN KARIŞTIRILMIŞ VE ZEMİNİN GÖRÜNÜR ALANINA YAYILMIŞ 10 HEDEF NOKTASI
-        # Her hedef bağımsız ve serbest bir dağılıma sahiptir:
-        goal_points = [
-            [start_x - 0.8, start_y + 1.3],   # Hedef 1 (Sol Üst)
-            [start_x + 1.3, start_y + 0.9],   # Hedef 2 (Sağ Üst)
-            [start_x - 1.4, start_y - 0.2],   # Hedef 3 (Sol Orta)
-            [start_x + 0.3, start_y - 1.5],   # Hedef 4 (Alt Orta)
-            [start_x + 1.5, start_y - 0.8],   # Hedef 5 (Sağ Alt)
-            [start_x - 1.2, start_y - 1.4],   # Hedef 6 (Sol Alt)
-            [start_x + 0.1, start_y + 1.6],   # Hedef 7 (Tam Üst)
-            [start_x - 1.5, start_y + 0.8],   # Hedef 8 (Sol Üst Kenar)
-            [start_x + 1.2, start_y - 1.5],   # Hedef 9 (Sağ Alt Köşe)
-            [start_x + 1.6, start_y + 0.1],   # Hedef 10 (Sağ Orta)
+        # Sahneye eklenecek DUVAR ENGELLERİ:
+        wall_configs = [
+            {"pos": [start_x - 0.5, start_y + 0.4], "size": [0.15, 0.8, 0.5]},
+            {"pos": [start_x + 0.7, start_y - 0.4], "size": [0.8, 0.15, 0.5]},
         ]
 
         # Zeminin içine serpiştirilmiş silindir engeller:
@@ -89,13 +80,34 @@ def run_navigation():
             [start_x + 0.5, start_y + 0.8],
         ]
 
-        # Zeminin görünen iç alanında engelleme/koridor oluşturan DUVARLAR:
-        wall_configs = [
-            # 1. Sol koridor duvarı
-            {"pos": [start_x - 0.5, start_y + 0.4], "size": [0.15, 0.8, 0.5]},
-            # 2. Sağ koridor duvarı
-            {"pos": [start_x + 0.7, start_y - 0.4], "size": [0.8, 0.15, 0.5]},
-        ]
+        # HER ÇALIŞTIRMADA TAMAMEN RASTGELE 10 HEDEF NOKTASI ÜRETİLİR
+        # Hedefler zemin sınırları ([-1.7m, +1.7m]) içinde, duvarlarla ve birbirleriyle çakışmayacak şekilde dinamik oluşturulur:
+        def generate_random_goals(num_targets=10):
+            import random
+            goals = []
+            while len(goals) < num_targets:
+                gx = round(random.uniform(start_x - 1.6, start_x + 1.6), 2)
+                gy = round(random.uniform(start_y - 1.6, start_y + 1.6), 2)
+                if math.hypot(gx - start_x, gy - start_y) < 0.6:
+                    continue
+                conflict = False
+                for w in wall_configs:
+                    if math.hypot(gx - w['pos'][0], gy - w['pos'][1]) < 0.45:
+                        conflict = True
+                        break
+                for c in obstacle_coords:
+                    if math.hypot(gx - c[0], gy - c[1]) < 0.45:
+                        conflict = True
+                        break
+                for og in goals:
+                    if math.hypot(gx - og[0], gy - og[1]) < 0.45:
+                        conflict = True
+                        break
+                if not conflict:
+                    goals.append([gx, gy])
+            return goals
+
+        goal_points = generate_random_goals(10)
 
         # 1. Aşama: Sahneye Görsel Öğeleri Ekle (İz Çizgisi, Hedef Küreleri, Engeller, Duvarlar)
         print("\n[Görselleştirme] Sahneye 10 Adet Dengeli Dağıtılmış Hedef Küresi, Silindirler ve DUVAR Engelleri ekleniyor...", flush=True)
