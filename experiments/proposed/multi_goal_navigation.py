@@ -67,35 +67,35 @@ def run_navigation():
         start_x, start_y, start_yaw = robot.get_pose()
         print(f"Robot Başlangıç Konumu: X={start_x:.2f}, Y={start_y:.2f}, Yaw={math.degrees(start_yaw):.1f}°", flush=True)
 
-        # Orijinal 5x5 metre zemin sınırları içinde DUVARLARLA ASLA ÇAKIŞMAYAN 10 HEDEF NOKTASI
-        # Her hedef, duvarlardan ve silindir engellerden en az 0.8 metre uzaktadır.
+        # ZEMİNİN GÖRÜNEN KISMINDA ([-1.8m, +1.8m]) RASTGELE DAĞITILMIŞ 10 HEDEF NOKTASI
+        # Dairesel veya simetrik değildir; sahnenin farklı köşelerine ve iç bölgelerine serbestçe serpiştirilmiştir:
         goal_points = [
-            [start_x + 1.5, start_y + 0.9],   # Hedef 1: Sağ Ön Açık Alan
-            [start_x + 1.7, start_y - 0.2],   # Hedef 2: Sağ Dış Alan
-            [start_x + 1.2, start_y - 1.2],   # Hedef 3: Sağ Arka Açık Alan
-            [start_x + 0.0, start_y - 1.6],   # Hedef 4: Tam Arka Alan
-            [start_x - 1.2, start_y - 1.2],   # Hedef 5: Sol Arka Açık Alan
-            [start_x - 1.7, start_y - 0.2],   # Hedef 6: Sol Dış Alan
-            [start_x - 1.5, start_y + 0.9],   # Hedef 7: Sol Ön Açık Alan
-            [start_x - 0.8, start_y + 1.6],   # Hedef 8: Sol Üst Alan
-            [start_x + 0.0, start_y + 1.8],   # Hedef 9: Tam İleri Alan
-            [start_x + 0.8, start_y + 1.6],   # Hedef 10: Sağ Üst Alan
+            [start_x + 1.4, start_y + 0.2],   # Hedef 1 (Orta Sağ)
+            [start_x + 1.6, start_y + 1.3],   # Hedef 2 (Sağ Üst Köşe)
+            [start_x + 0.2, start_y + 1.8],   # Hedef 3 (Üst İç Bölge)
+            [start_x - 1.2, start_y + 1.5],   # Hedef 4 (Sol Üst Bölge)
+            [start_x - 1.6, start_y + 0.4],   # Hedef 5 (Orta Sol Dış)
+            [start_x - 1.3, start_y - 0.8],   # Hedef 6 (Sol Alt Bölge)
+            [start_x - 0.3, start_y - 1.6],   # Hedef 7 (Alt İç Bölge)
+            [start_x + 0.8, start_y - 1.5],   # Hedef 8 (Sağ Alt Bölge)
+            [start_x + 1.5, start_y - 0.4],   # Hedef 9 (Sağ Alt Dış)
+            [start_x - 0.5, start_y + 0.2],   # Hedef 10 (Merkez Yakını)
         ]
 
-        # Engel silindirleri: Hedef rotalarının ortasına değil, geçiş koridorlarına yerleştirilir
+        # Zeminin içine serpiştirilmiş silindir engeller:
         obstacle_coords = [
-            [start_x + 0.0, start_y - 0.8],
-            [start_x + 0.0, start_y + 0.9],
-            [start_x + 0.8, start_y - 0.7],
-            [start_x - 0.8, start_y - 0.7],
+            [start_x - 1.1, start_y + 0.8],
+            [start_x + 1.2, start_y - 0.9],
+            [start_x - 0.2, start_y + 1.2],
+            [start_x + 0.9, start_y + 1.4],
         ]
 
-        # Sahneye eklenecek DUVAR ENGELLERİ (İç koridorda yer alan, hedeflerle asla çakışmayan duvarlar)
+        # Zeminin görünen iç alanında engelleme/koridor oluşturan DUVARLAR:
         wall_configs = [
-            # 1. Sağ iç duvar (x=+0.8, y=0.0) -> En yakın hedef 0.75m uzaktadır
-            {"pos": [start_x + 0.8, start_y + 0.0], "size": [0.15, 0.8, 0.5]},
-            # 2. Sol iç duvar (x=-0.8, y=0.0) -> En yakın hedef 0.75m uzaktadır
-            {"pos": [start_x - 0.8, start_y + 0.0], "size": [0.15, 0.8, 0.5]},
+            # 1. Dikey Koridor Duvarı (Sağ orta bölge)
+            {"pos": [start_x + 0.6, start_y + 0.5], "size": [0.18, 0.9, 0.5]},
+            # 2. Yatay Koridor Duvarı (Sol alt bölge)
+            {"pos": [start_x - 0.7, start_y - 0.6], "size": [0.9, 0.18, 0.5]},
         ]
 
         # 1. Aşama: Sahneye Görsel Öğeleri Ekle (İz Çizgisi, Hedef Küreleri, Engeller, Duvarlar)
