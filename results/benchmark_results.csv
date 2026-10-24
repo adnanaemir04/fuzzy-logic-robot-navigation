@@ -1,0 +1,6 @@
+Scenario,Success_Rate_Percent,Total_Path_Length_m,Total_Time_s,Collision_Count,Mean_Target_Error_m
+1. Engel Bulunmayan Ortam,100.0,5.97,14.25,0,0.312
+2. Tek Engelli Ortam,100.0,6.53,16.08,0,0.311
+3. Coklu Engelli Ortam,100.0,6.92,15.88,0,0.312
+4. Dar Gecis Senaryosu,75.0,7.01,20.93,0,0.312
+5. GA Olmadan (Düz Sıra),100.0,6.59,19.07,0,0.311
