@@ -75,24 +75,14 @@ class SceneVisualizer:
     def add_obstacles(self, obstacle_coords):
         """
         Sahneye silindir engeller ekler (Kırmızı silindirler).
-        Fiziksel olarak katı (respondable) ve sensörlerce algılanabilir (detectable) yapılır.
+        obstacle_coords: [[x1, y1], [x2, y2], ...]
         """
         for i, (ox, oy) in enumerate(obstacle_coords):
             try:
-                obs = self.sim.createPrimitiveShape(self.sim.primitiveshape_cylinder, [0.35, 0.35, 0.6])
+                obs = self.sim.createPrimitiveShape(self.sim.primitiveshape_cylinder, [0.4, 0.4, 0.6])
                 self.sim.setObjectPosition(obs, -1, [float(ox), float(oy), 0.3])
                 self.sim.setShapeColor(obs, '', self.sim.colorcomponent_ambient_diffuse, [0.9, 0.1, 0.1])  # Kırmızı silindir
                 self.sim.setObjectAlias(obs, f"VisualObstacle_{i+1}")
-                # Katı fiziksel gövde ve sensör algılama özellikleri
-                self.sim.setObjectInt32Param(obs, self.sim.shapeintparam_static, 1)
-                self.sim.setObjectInt32Param(obs, self.sim.shapeintparam_respondable, 1)
-                self.sim.setObjectSpecialProperty(
-                    obs,
-                    self.sim.objectspecialproperty_collidable |
-                    self.sim.objectspecialproperty_measurable |
-                    self.sim.objectspecialproperty_detectable |
-                    self.sim.objectspecialproperty_renderable
-                )
                 self.obstacle_handles.append(obs)
             except Exception:
                 pass
@@ -100,7 +90,7 @@ class SceneVisualizer:
     def add_walls(self, wall_configs):
         """
         Sahneye dikdörtgen prizma / duvar engelleri ekler.
-        Fiziksel olarak katı (respondable) ve sensörlerce algılanabilir (detectable) yapılır.
+        wall_configs: [{'pos': [x, y], 'size': [lx, ly, lz]}, ...]
         """
         for i, w in enumerate(wall_configs):
             try:
@@ -111,16 +101,6 @@ class SceneVisualizer:
                 # Tuğla / koyu turuncu-kahve duvar rengi
                 self.sim.setShapeColor(wall, '', self.sim.colorcomponent_ambient_diffuse, [0.85, 0.4, 0.1])
                 self.sim.setObjectAlias(wall, f"WallObstacle_{i+1}")
-                # Katı fiziksel gövde ve sensör algılama özellikleri
-                self.sim.setObjectInt32Param(wall, self.sim.shapeintparam_static, 1)
-                self.sim.setObjectInt32Param(wall, self.sim.shapeintparam_respondable, 1)
-                self.sim.setObjectSpecialProperty(
-                    wall,
-                    self.sim.objectspecialproperty_collidable |
-                    self.sim.objectspecialproperty_measurable |
-                    self.sim.objectspecialproperty_detectable |
-                    self.sim.objectspecialproperty_renderable
-                )
                 self.obstacle_handles.append(wall)
             except Exception:
                 pass
