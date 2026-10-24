@@ -131,7 +131,8 @@ def run_navigation():
         step_count = 0
         total_path_length = 0.0
         prev_x, prev_y = start_x, start_y
-        goal_reach_threshold = 0.12  # metre (Robotun hedefin TAM MERKEZİNDEN geçmesini garanti eder)
+        # Hedefe varış toleransı: 0.25m (25 cm'lik küreye temas ettiği an hedefi onaylar, etrafında dönmeyi önler)
+        goal_reach_threshold = 0.25  # metre
 
         start_time = time.time()
         last_vl = 0.0
@@ -168,22 +169,26 @@ def run_navigation():
                 # Ön sensörleri oku
                 d_left, d_right = robot.read_front_sensors()
 
-                # Hedefe son yaklaşmada (0.35m altı) robot doğrudan hedefe kilitlenir
-                # Uzaktayken gerçek engeller için kaçış uygulanır
-                is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right) and (pos_error > 0.35)
+                # Hedefe ulaşma kontrolü (Küreye ulaşıldığı an sonraki hedefe geçilir, etrafta dönülmez)
+                if pos_error < goal_reach_threshold:
+                    goal_reached = True
+                    print(f">>> TEBRİKLER: {target_name} noktasına ulaşıldı ve içinden geçildi! (Hata: {pos_error:.3f} m)", flush=True)
+                    break
+
+                # Önünde katı engel/duvar varsa kaçış uygula
+                is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right)
 
                 if is_obstacle:
                     v_obs_l, v_obs_r = avoidance_ctrl.evaluate(d_left, d_right)
-                    v_tr_l, v_tr_r = tracking_ctrl.evaluate(pos_error, heading_error)
-                    cmd_vl = 0.65 * v_obs_l + 0.35 * v_tr_l
-                    cmd_vr = 0.65 * v_obs_r + 0.35 * v_tr_r
+                    cmd_vl = v_obs_l
+                    cmd_vr = v_obs_r
                     mode = "OBSTACLE_AVOIDANCE"
                 else:
                     cmd_vl, cmd_vr = tracking_ctrl.evaluate(pos_error, heading_error)
                     mode = "TRACKING"
 
-                # Hızları yumuşat (Low-pass filter ile ani titreme ve salınımları engelle)
-                alpha = 0.45
+                # Hızları yumuşat
+                alpha = 0.5
                 v_l = alpha * cmd_vl + (1.0 - alpha) * last_vl
                 v_r = alpha * cmd_vr + (1.0 - alpha) * last_vr
                 last_vl, last_vr = v_l, v_r
@@ -209,12 +214,6 @@ def run_navigation():
 
                 if step % 10 == 0:
                     print(f"[{mode:<18}] Kalan: {pos_error:.2f} m | Açı: {math.degrees(heading_error):+.1f}° | Sol: {d_left:.2f}m, Sağ: {d_right:.2f}m | L={v_l:.2f}, R={v_r:.2f}", flush=True)
-
-                # Hedefe ulaşma kontrolü (Hedef küresinin tam göbeği)
-                if pos_error < goal_reach_threshold:
-                    goal_reached = True
-                    print(f">>> TEBRİKLER: {target_name} noktasının TAM ÜSTÜNDEN GEÇİLDİ! (Hata: {pos_error:.3f} m)", flush=True)
-                    break
 
                 time.sleep(0.08)
 
