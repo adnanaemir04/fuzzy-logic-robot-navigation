@@ -42,6 +42,8 @@ class SceneVisualizer:
                 self.sim.setObjectPosition(marker, -1, [float(gx), float(gy), 0.15])
                 self.sim.setShapeColor(marker, '', self.sim.colorcomponent_ambient_diffuse, [0.1, 0.9, 0.2])  # Yeşil
                 self.sim.setObjectAlias(marker, f"GoalMarker_{idx+1}")
+                # Küreler sadece görseldir; sensörler ve fiziksel çarpışma bunu engel olarak görmemeli:
+                self.sim.setObjectSpecialProperty(marker, self.sim.objectspecialproperty_renderable)
                 self.goal_marker_handles.append(marker)
             except Exception:
                 pass
@@ -52,6 +54,7 @@ class SceneVisualizer:
             self.sim.setObjectPosition(depot_marker, -1, [float(start_pos[0]), float(start_pos[1]), 0.15])
             self.sim.setShapeColor(depot_marker, '', self.sim.colorcomponent_ambient_diffuse, [0.2, 0.4, 1.0])  # Mavi
             self.sim.setObjectAlias(depot_marker, "DepotMarker")
+            self.sim.setObjectSpecialProperty(depot_marker, self.sim.objectspecialproperty_renderable)
             self.goal_marker_handles.append(depot_marker)
         except Exception:
             pass
