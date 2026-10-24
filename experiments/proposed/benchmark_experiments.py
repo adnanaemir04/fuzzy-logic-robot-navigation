@@ -23,9 +23,18 @@ Hesaplanan Ölçütler:
 
 import csv
 import math
+import os
+import sys
 import time
+from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
+
+# src dizinini import arama yoluna ekle
+current_dir = Path(__file__).resolve().parent
+src_dir = current_dir.parents[1] / "src"
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
 
 from fuzzy_controller import FuzzyTrackingController, FuzzyObstacleAvoidanceController
 from ga_tsp import GeneticTSP
