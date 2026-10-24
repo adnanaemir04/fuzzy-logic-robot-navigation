@@ -110,25 +110,8 @@ class SceneVisualizer:
         self.prev_pos = cur_pos
 
     def ensure_large_floor(self, target_size=50.0):
-        """
-        Robotun asla boşluğa düşmemesi için CoppeliaSim zeminini (Floor)
-        ve altındaki görsel kaplamayı (box) en az 50x50 metre boyutuna genişletir.
-        """
-        try:
-            floor = self.sim.getObject('/Floor')
-            for child in self.sim.getObjectsInTree(floor):
-                try:
-                    bb = self.sim.getShapeBB(child)[0]
-                    if bb[0] < target_size:
-                        factor_x = target_size / bb[0]
-                        factor_y = target_size / bb[1]
-                        self.sim.scaleObject(child, factor_x, factor_y, 1.0)
-                except Exception:
-                    pass
-            self.sim.setObjectPosition(floor, -1, [0.0, 0.0, -0.1])
-            print(f"[Zemin] Zemin ve görsel döşeme {target_size}x{target_size} m boyutuna genişletildi.", flush=True)
-        except Exception as e:
-            print(f"[Zemin] Uyarı: {e}", flush=True)
+        """Zemin boyutuna müdahale etmez, sahnenin orijinal boyutunu korur."""
+        pass
 
     def cleanup(self):
         """Simülasyon bitince kırmızı çizgi izini, hedef kürelerini ve geçici engelleri temizler."""

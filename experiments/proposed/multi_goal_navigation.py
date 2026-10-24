@@ -67,36 +67,36 @@ def run_navigation():
         start_x, start_y, start_yaw = robot.get_pose()
         print(f"Robot Başlangıç Konumu: X={start_x:.2f}, Y={start_y:.2f}, Yaw={math.degrees(start_yaw):.1f}°", flush=True)
 
-        # Robotun etrafında DENGELİ ve MERKEZİ 10 ADET HEDEF NOKTASI
-        # Sadece sağ tarafa değil; ön, arka, sol ve sağ sektörlere homojen dağıtılmıştır.
+        # Orijinal 5x5 metre zemin sınırları ([-2.2, +2.2] m) içinde dengeli 10 HEDEF NOKTASI
+        # Robotun zeminden düşmesini önlemek için tüm koordinatlar zeminin güvenli iç alanındadır:
         goal_points = [
-            [start_x + 1.8, start_y + 1.2],   # 1: Sağ Ön
-            [start_x + 2.5, start_y + 0.0],   # 2: Tam Sağ
-            [start_x + 1.8, start_y - 1.5],   # 3: Sağ Arka
-            [start_x + 0.0, start_y - 2.5],   # 4: Tam Arka
-            [start_x - 1.8, start_y - 1.8],   # 5: Sol Arka
-            [start_x - 2.5, start_y - 0.2],   # 6: Tam Sol
-            [start_x - 1.8, start_y + 1.5],   # 7: Sol Ön
-            [start_x + 0.0, start_y + 2.5],   # 8: Tam Ön
-            [start_x + 1.0, start_y + 3.2],   # 9: İleri Sağ
-            [start_x - 1.0, start_y + 3.2],   # 10: İleri Sol
+            [start_x + 1.2, start_y + 0.8],   # 1: Sağ Ön
+            [start_x + 1.6, start_y + 0.0],   # 2: Tam Sağ
+            [start_x + 1.2, start_y - 0.9],   # 3: Sağ Arka
+            [start_x + 0.0, start_y - 1.5],   # 4: Tam Arka
+            [start_x - 1.2, start_y - 1.0],   # 5: Sol Arka
+            [start_x - 1.6, start_y + 0.0],   # 6: Tam Sol
+            [start_x - 1.2, start_y + 0.9],   # 7: Sol Ön
+            [start_x + 0.0, start_y + 1.6],   # 8: Tam Ön
+            [start_x + 0.7, start_y + 1.5],   # 9: İleri Sağ
+            [start_x - 0.7, start_y + 1.5],   # 10: İleri Sol
         ]
 
-        # Engel silindirleri: Hedeflerin tam üzerine binmeyecek, çevre rotaları zorlaştıracak koordinatlarda
+        # Engel silindirleri: Güvenli koridorlar oluşturan kırmızı silindirler
         obstacle_coords = [
-            [start_x + 1.0, start_y + 0.6],
-            [start_x + 1.0, start_y - 0.8],
-            [start_x - 1.0, start_y - 0.8],
-            [start_x - 1.0, start_y + 0.8],
-            [start_x + 0.0, start_y + 1.6],
+            [start_x + 0.7, start_y + 0.4],
+            [start_x + 0.7, start_y - 0.5],
+            [start_x - 0.7, start_y - 0.5],
+            [start_x - 0.7, start_y + 0.5],
+            [start_x + 0.0, start_y + 0.9],
         ]
 
-        # Sahneye eklenecek DUVAR ENGELLERİ (Koridor ve dolanma etkisi oluşturan duvarlar)
+        # Sahneye eklenecek DUVAR ENGELLERİ (Zemin içine sığdırılmış koridor duvarları)
         wall_configs = [
-            # 1. Yatay Duvar Engeli (Sağ geçişi sınırlayan duvar)
-            {"pos": [start_x + 2.0, start_y + 0.6], "size": [0.3, 1.6, 0.6]},
-            # 2. Dikey Duvar Engeli (Sol geçişi sınırlayan duvar)
-            {"pos": [start_x - 2.0, start_y - 0.6], "size": [0.3, 1.6, 0.6]},
+            # 1. Sağ koridor duvarı
+            {"pos": [start_x + 1.4, start_y + 0.4], "size": [0.2, 0.9, 0.5]},
+            # 2. Sol koridor duvarı
+            {"pos": [start_x - 1.4, start_y - 0.4], "size": [0.2, 0.9, 0.5]},
         ]
 
         # 1. Aşama: Sahneye Görsel Öğeleri Ekle (İz Çizgisi, Hedef Küreleri, Engeller, Duvarlar)
