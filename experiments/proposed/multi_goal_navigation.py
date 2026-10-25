@@ -55,8 +55,8 @@ def run_navigation():
     tracking_ctrl = FuzzyTrackingController(max_wheel_speed=2.5)
     avoidance_ctrl = FuzzyObstacleAvoidanceController(safe_distance=0.8)
 
-    # Robotun boşluğa düşmemesi için zemini 50x50 metre devasa boyuta genişlet
-    visualizer.ensure_large_floor(target_size=50.0)
+    # Robotun ve tüm hedeflerin rahatça sığması için zemini görsel ve fiziksel olarak genişlet
+    visualizer.ensure_large_floor(target_size=12.0)
 
     # Simülasyonu başlat
     robot.start_simulation()

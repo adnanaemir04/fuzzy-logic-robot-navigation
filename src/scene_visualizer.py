@@ -179,9 +179,25 @@ class SceneVisualizer:
         self.sim.addDrawingObjectItem(self.drawing_handle, line_segment)
         self.prev_pos = cur_pos
 
-    def ensure_large_floor(self, target_size=50.0):
-        """Zemin boyutuna müdahale etmez, sahnenin orijinal boyutunu korur."""
-        pass
+    def ensure_large_floor(self, target_size=12.0):
+        """
+        CoppeliaSim zeminini (Floor) robotun ve tüm hedeflerin rahatça sığacağı
+        boyuta görsel ve fiziksel olarak otomatik genişletir.
+        """
+        floor_names = ['/Floor', '/floor', 'Floor', 'floor', '/ResizableFloor_5_25']
+        for name in floor_names:
+            try:
+                floor = self.sim.getObject(name)
+                # Mevcut zemin boyutlarını al
+                bb = self.sim.getShapeBB(floor)[0]
+                current_size = max(bb[0], bb[1])
+                if current_size < target_size:
+                    scale = target_size / current_size
+                    self.sim.scaleObject(floor, scale, scale, 1.0)
+                    print(f"[Zemin] Zemin ({name}) {current_size:.1f}m -> {target_size:.1f}m genişletildi.", flush=True)
+                break
+            except Exception:
+                pass
 
     def cleanup(self):
         """Simülasyon bitince kırmızı çizgi izini, hedef kürelerini ve geçici engelleri temizler."""
