@@ -165,12 +165,14 @@ class SceneVisualizer:
                 pass
 
     def update_trail(self, cur_x, cur_y):
-        """Robotun her adımında arkasına çizgi ekler."""
+        """Robotun her adımında arkasına canlı kırmızı çizgi ekler."""
+        # Çizginin zeminin veya robotun altında kalmaması için Z = 0.14m (zemin yüzeyinin üstü)
+        z_height = 0.14
         if self.drawing_handle is None or self.prev_pos is None:
-            self.prev_pos = [cur_x, cur_y, 0.05]
+            self.prev_pos = [cur_x, cur_y, z_height]
             return
 
-        cur_pos = [cur_x, cur_y, 0.05]
+        cur_pos = [cur_x, cur_y, z_height]
         # Robot hareket ettiyse araya çizgi parçası ekle
         line_segment = [
             self.prev_pos[0], self.prev_pos[1], self.prev_pos[2],
@@ -179,23 +181,20 @@ class SceneVisualizer:
         self.sim.addDrawingObjectItem(self.drawing_handle, line_segment)
         self.prev_pos = cur_pos
 
-    def ensure_large_floor(self, target_size=12.0):
+    def ensure_large_floor(self, target_size=14.0):
         """
-        CoppeliaSim zeminini (Floor) robotun ve tüm hedeflerin rahatça sığacağı
-        boyuta görsel ve fiziksel olarak otomatik genişletir.
+        CoppeliaSim zeminini (Floor ve altındaki dama tahtası 'box' nesnesi)
+        robotun ve tüm hedeflerin rahatça sığacağı boyuta görsel ve fiziksel olarak genişletir.
         """
-        floor_names = ['/Floor', '/floor', 'Floor', 'floor', '/ResizableFloor_5_25']
-        for name in floor_names:
+        for name in ['/Floor', './Floor', 'Floor', '/box', './box', 'box']:
             try:
                 floor = self.sim.getObject(name)
-                # Mevcut zemin boyutlarını al
                 bb = self.sim.getShapeBB(floor)[0]
                 current_size = max(bb[0], bb[1])
                 if current_size < target_size:
                     scale = target_size / current_size
                     self.sim.scaleObject(floor, scale, scale, 1.0)
                     print(f"[Zemin] Zemin ({name}) {current_size:.1f}m -> {target_size:.1f}m genişletildi.", flush=True)
-                break
             except Exception:
                 pass
 

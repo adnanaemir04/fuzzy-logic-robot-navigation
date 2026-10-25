@@ -71,63 +71,73 @@ def run_navigation():
         # Mavi Nokta: Robotun başlangıç ve bitiş üssü (start_x, start_y)
         visualizer.setup_sketch_environment(origin=[start_x, start_y])
 
-        # Çizimdeki 11 Hedef Noktasının Krokiye Göre Serbest Alandaki Koordinatları
-        # Engellerden ve duvarlardan yeterli güvenlik payı (en az 0.35m - 0.45m) bırakılarak konumlandırıldı:
-        # Sol kanat (X ~ -0.4 -> 1.2):
-        # Orta koridor (X ~ 2.0 -> 3.4):
-        # Sağ kanat (X ~ 4.2 -> 5.1):
+        # Kroki Çizimindeki 11 Hedef Noktası (Koridor ve ferah açık alan koordinatları)
+        # Sağ kanattaki hedefler kırmızı kutunun arkasına saklanmayıp kutunun solundaki ferah koridorda konumlandırıldı:
         goal_points = [
             # --- SOL KANAT (Sol Dikey Duvarın Sol Tarafı) ---
-            [start_x + 0.45, start_y + 0.55],   # G0: Sol alt hedef (Mavi noktanın hafif sağ-üstü)
-            [start_x - 0.40, start_y + 1.25],   # G1: En sol orta hedef (Sol dış bükey kavis)
-            [start_x + 0.35, start_y + 2.45],   # G2: Sol üst hedef (Sol kutunun sol-üst açık alanı)
-            [start_x + 1.15, start_y + 1.85],   # G3: Sol üst kutunun altı / duvarın solundaki serbest alan
+            [start_x - 0.50, start_y + 1.20],   # G0: En sol orta hedef
+            [start_x + 0.35, start_y + 2.25],   # G1: Sol üst hedef (Sol kutunun önü)
+            [start_x + 1.15, start_y + 1.55],   # G2: Sol duvar yanı hedef
+            [start_x + 0.50, start_y + 0.55],   # G3: Sol alt hedef
 
             # --- ORTA KORİDOR (Sol Duvar ile Sağ Duvar Arası) ---
-            [start_x + 1.95, start_y + 0.25],   # G4: Sol dikey duvarın hemen alt geçiş ağzı
-            [start_x + 2.70, start_y + 1.50],   # G5: Orta koridor göbek hedefi (Orta kutunun altı)
-            [start_x + 3.10, start_y + 0.25],   # G6: Sağ dikey duvarın sol alt açık geçiş ağzı
+            [start_x + 2.05, start_y + 0.20],   # G4: Sol kapıdan orta koridora giriş
+            [start_x + 2.70, start_y + 1.35],   # G5: Orta koridor iç hedefi
+            [start_x + 3.25, start_y + 0.20],   # G6: Orta koridordan sağ kapıya yöneliş
 
-            # --- SAĞ KANAT (Sağ Dikey Duvarın Sağ Tarafı) ---
-            [start_x + 4.20, start_y + 0.35],   # G7: Sağ duvarın altından sağ kanada giriş
-            [start_x + 4.95, start_y + 0.50],   # G8: En sağ alt köşe hedef
-            [start_x + 4.60, start_y + 1.35],   # G9: Sağ yatay kutunun altındaki serbest alan
-            [start_x + 4.85, start_y + 2.65],   # G10: Sağ yatay kutunun üstündeki açık alan
+            # --- SAĞ KANAT (Sağ Dikey Duvarın Sağ Tarafı - Kutunun Önündeki Açık Alan) ---
+            [start_x + 4.15, start_y + 0.20],   # G7: Sağ kapıdan sağ kanada çıkış
+            [start_x + 4.85, start_y + 0.55],   # G8: Sağ alt köşe hedef
+            [start_x + 4.35, start_y + 1.35],   # G9: Sağ kutu altı açık alan
+            [start_x + 4.35, start_y + 2.65],   # G10: Sağ kutu üstü açık alan
         ]
 
         print("\n[Görselleştirme] Kullanıcının Çizdiği 11 Hedef Küresi ve Kroki Ortamı Sahneye Ekleniyor...", flush=True)
         visualizer.setup_visuals(goal_points, [start_x, start_y])
 
-        # Duvar engellerinin çizgi segmentleri (GA'nın duvarların içinden zikzak çizmesini engellemek için)
-        # Siyah sol duvar: X = start_x + 1.60, Y aralığı: [start_y + 0.55, start_y + 2.35]
-        # Kırmızı sağ duvar: X = start_x + 3.80, Y aralığı: [start_y + 0.55, start_y + 2.55]
+        # Duvar ve koridor kısıtlamaları:
+        # 1. Sol ve sağ dikey duvarların altı (y <= 0.25) AÇIK KAPI'dır, yukarısı duvardır.
+        # 2. Sağ kutunun içinden kestirmeden geçilmemesi için kutu ekseni tanımlanır.
         obstacle_segments = [
-            ((start_x + 1.60, start_y + 0.55), (start_x + 1.60, start_y + 2.35)),
-            ((start_x + 3.80, start_y + 0.55), (start_x + 3.80, start_y + 2.55))
+            ((start_x + 1.60, start_y + 0.35), (start_x + 1.60, start_y + 5.0)),
+            ((start_x + 3.80, start_y + 0.35), (start_x + 3.80, start_y + 5.0)),
+            ((start_x + 4.50, start_y + 2.05), (start_x + 5.30, start_y + 2.05)),
         ]
 
-        # 2. Aşama: GA (Genetik Algoritma) ile En Kısa TSP Sırasını Çöz (Duvar kesişim cezasıyla)
+        # 2. Aşama: GA (Genetik Algoritma) ile En Kısa TSP Sırasını Çöz (Doğal koridor akışıyla)
         print("\n[GA] 11 Hedefli Çizim Rotası için Genetik Algoritma çalıştırılıyor...", flush=True)
         ga = GeneticTSP(
             start_pos=[start_x, start_y],
             goal_points=goal_points,
-            pop_size=80,
-            generations=120,
+            pop_size=120,
+            generations=160,
             obstacle_segments=obstacle_segments
         )
         best_tour, est_distance = ga.solve()
 
         ordered_goals = [goal_points[i] for i in best_tour]
+        
+        # Güvenli Dönüş Yolu (Sağ kanattan başlangıç üssüne duvara çarpmadan alt kapılardan geçerek dönüş):
+        # Eğer son hedef sağ kanatta veya orta koridordaysa, başlangıç üssüne (start_x, start_y)
+        # dönmek için alt kapı geçiş noktaları eklenir:
+        last_goal = ordered_goals[-1]
+        if last_goal[0] > start_x + 3.5:  # Sağ kanattaysa
+            ordered_goals.append([start_x + 4.15, start_y + 0.20])  # Sağ kapı
+            ordered_goals.append([start_x + 3.25, start_y + 0.20])  # Orta koridor
+            ordered_goals.append([start_x + 2.05, start_y + 0.20])  # Sol kapı
+        elif last_goal[0] > start_x + 1.5:  # Orta koridordaysa
+            ordered_goals.append([start_x + 2.05, start_y + 0.20])  # Sol kapı
+
         ordered_goals.append([start_x, start_y])  # Başlangıç noktasına dönüş (Mavi nokta)
 
-        print(f"[GA] Optimum Rota Belirlendi: Ziyaret Sırası = {best_tour} -> Mavi Nokta (Depot)", flush=True)
+        print(f"[GA] Optimum Rota Belirlendi: Ziyaret Sırası = {best_tour} -> Güvenli Koridor Dönüşü -> Mavi Nokta (Depot)", flush=True)
         print(f"[GA] Tahmini Rota Mesafesi: {est_distance:.2f} m\n", flush=True)
 
         trajectory_log = []
         step_count = 0
         total_path_length = 0.0
         prev_x, prev_y = start_x, start_y
-        goal_reach_threshold = 0.12  # Hedefin tam merkezinden geçme eşiği (0.12 metre)
+        goal_reach_threshold = 0.16  # Hedef merkezinden geçiş toleransı (0.16 m)
 
         start_time = time.time()
         last_vl = 0.0
@@ -141,13 +151,12 @@ def run_navigation():
 
             goal_reached = False
 
-            # 1. ÖNCE HEDEFE DÖNÜŞ (GÜVENLİ VE DÜZ GİTME):
-            # Robot bir sonraki hedefe hareket etmeden önce yerinde durur ve tam hedefe döner.
-            # Ön sensörler çok yakın bir engel görüyorsa dönmeyi engellemeden önce geriye manevra izni verir.
+            # 1. ÖNCE HEDEFE DÖNÜŞ (DÜZ GİTME VE GÜVENLİK):
             robot.stop_motors()
-            time.sleep(0.04)
+            time.sleep(0.03)
             for align_step in range(90):
                 cur_x, cur_y, cur_yaw = robot.get_pose()
+                visualizer.update_trail(cur_x, cur_y)
                 dx = target_x - cur_x
                 dy = target_y - cur_y
                 target_angle = math.atan2(dy, dx)
@@ -156,7 +165,6 @@ def run_navigation():
                 if abs(math.degrees(head_err)) < 3.5:
                     break
 
-                # Yerinde dönüş hızı (açı yaklaştıkça yumuşat)
                 turn_mag = 1.4 if abs(math.degrees(head_err)) > 20.0 else 0.75
                 if head_err > 0:
                     robot.set_wheel_velocities(-turn_mag, turn_mag)
@@ -165,11 +173,11 @@ def run_navigation():
                 time.sleep(0.02)
 
             robot.stop_motors()
-            time.sleep(0.03)
+            time.sleep(0.02)
             last_vl, last_vr = 0.0, 0.0
 
-            # 2. ŞİMDİ HEDEFE DOĞRU İLERLE VE ENGELLERİ KAÇ:
-            for step in range(400):
+            # 2. HEDEFE DOĞRU İLERLE VE ENGELLERDEN KAÇIN:
+            for step in range(500):
                 cur_x, cur_y, cur_yaw = robot.get_pose()
                 visualizer.update_trail(cur_x, cur_y)
 
@@ -181,7 +189,7 @@ def run_navigation():
                 dy = target_y - cur_y
                 pos_error = math.hypot(dx, dy)
 
-                # Hedefin TAM MERKEZİNDEN GEÇİLDİĞİ AN BİTİR:
+                # Hedefin merkezinden geçildiğinde tamamla
                 if pos_error < goal_reach_threshold:
                     goal_reached = True
                     print(f">>> TEBRİKLER: {target_name} noktasının TAM MERKEZİNDEN GEÇİLDİ! (Mesafe: {pos_error:.3f} m)", flush=True)
@@ -193,10 +201,9 @@ def run_navigation():
                 d_left, d_right = robot.read_front_sensors()
 
                 # Engel algılama (Fuzzy Obstacle Avoidance):
-                # Yakında kritik engel varsa kaçınma denetleyicisi tam yetkilidir.
-                # Hedefe çok yakınken (0.15m altı) sadece acil çarpışma durumunda kaçınma tetiklenir.
                 is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right)
-                if pos_error < 0.15 and min(d_left, d_right) > 0.20:
+                # Hedefe son 0.16m kala sadece acil çarpışma durumunda kaçın:
+                if pos_error < 0.16 and min(d_left, d_right) > 0.20:
                     is_obstacle = False
 
                 if is_obstacle:
@@ -205,16 +212,15 @@ def run_navigation():
                     cmd_vr = v_obs_r
                     mode = "OBSTACLE_AVOIDANCE"
                 else:
-                    # Hedefe yaklaşırken hızı kademeli azalt (savrulmayı ve hedefi ıskalamayı önler)
-                    base_v = 2.2
-                    if pos_error < 0.40:
-                        base_v = max(0.8, base_v * (pos_error / 0.40))
+                    # Hedefe yaklaşırken hızı orantılı yumuşat
+                    base_v = 2.0
+                    if pos_error < 0.45:
+                        base_v = max(0.8, base_v * (pos_error / 0.45))
 
                     deg_err = math.degrees(heading_error)
-                    if abs(deg_err) > 35.0:
-                        # Eğer rotadan ciddi sapılmışsa (örneğin engelden kaçtıktan sonra),
-                        # önce yerinde hızlıca hedefe kilitlen (geniş kavis çizip duvara vurmayı önler)
-                        turn_speed = 1.4
+                    if abs(deg_err) > 30.0:
+                        # Rotadan sapma durumunda yerinde yumuşak toparlanma
+                        turn_speed = 1.3
                         if heading_error > 0:
                             cmd_vl, cmd_vr = -turn_speed, turn_speed
                         else:
@@ -224,14 +230,14 @@ def run_navigation():
                         cmd_vl, cmd_vr = base_v, base_v
                         mode = "TRACKING_STRAIGHT"
                     else:
-                        kp = 0.03
-                        diff = max(-0.7, min(0.7, kp * deg_err))
+                        kp = 0.028
+                        diff = max(-0.65, min(0.65, kp * deg_err))
                         cmd_vl = base_v - diff
                         cmd_vr = base_v + diff
                         mode = "TRACKING"
 
                 # Hızları yumuşat (Low-pass filter)
-                alpha = 0.50
+                alpha = 0.45
                 v_l = alpha * cmd_vl + (1.0 - alpha) * last_vl
                 v_r = alpha * cmd_vr + (1.0 - alpha) * last_vr
                 last_vl, last_vr = v_l, v_r
