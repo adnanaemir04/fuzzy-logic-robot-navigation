@@ -53,7 +53,8 @@ def run_navigation():
 
     # Denetleyicileri oluştur
     tracking_ctrl = FuzzyTrackingController(max_wheel_speed=2.5)
-    avoidance_ctrl = FuzzyObstacleAvoidanceController(safe_distance=0.8)
+    # Güvenli engel algılama ve kaçış mesafesi (0.60m)
+    avoidance_ctrl = FuzzyObstacleAvoidanceController(safe_distance=0.60)
 
     # Robotun boşluğa düşmemesi için zemini 50x50 metre devasa boyuta genişlet
     visualizer.ensure_large_floor(target_size=50.0)
@@ -131,7 +132,8 @@ def run_navigation():
         step_count = 0
         total_path_length = 0.0
         prev_x, prev_y = start_x, start_y
-        goal_reach_threshold = 0.12  # metre (Robotun hedefin TAM MERKEZİNDEN geçmesini garanti eder)
+        # Hedef küresinin tam ortasından geçiş eşiği (0.08 m)
+        goal_reach_threshold = 0.08
 
         start_time = time.time()
         last_vl = 0.0
@@ -146,7 +148,7 @@ def run_navigation():
             goal_reached = False
 
             # Hedefe ulaşmak için yeterli adım sayısı
-            for step in range(350):
+            for step in range(400):
                 cur_x, cur_y, cur_yaw = robot.get_pose()
 
                 # Sahneye robotun arkasından canlı kırmızı iz çiz
@@ -162,33 +164,51 @@ def run_navigation():
                 dy = target_y - cur_y
                 pos_error = math.hypot(dx, dy)
 
+                # Hedefe ulaşma kontrolü (Hedef küresinin tam merkezinden geçme)
+                if pos_error < goal_reach_threshold:
+                    goal_reached = True
+                    print(f">>> TEBRİKLER: {target_name} noktasının TAM MERKEZİNDEN GEÇİLDİ! (Mesafe: {pos_error:.3f} m)", flush=True)
+                    break
+
                 target_angle = math.atan2(dy, dx)
                 heading_error = normalize_angle(target_angle - cur_yaw)
 
                 # Ön sensörleri oku
                 d_left, d_right = robot.read_front_sensors()
 
-                # Hedefe son yaklaşmada (0.35m altı) robot doğrudan hedefe kilitlenir
-                # Uzaktayken gerçek engeller için kaçış uygulanır
-                is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right) and (pos_error > 0.35)
+                # Makale prensibi: Engel algılandığında engele mesafe kritikse kaçınma denetleyicisi tam yetkilidir.
+                is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right)
 
                 if is_obstacle:
                     v_obs_l, v_obs_r = avoidance_ctrl.evaluate(d_left, d_right)
-                    v_tr_l, v_tr_r = tracking_ctrl.evaluate(pos_error, heading_error)
-                    cmd_vl = 0.65 * v_obs_l + 0.35 * v_tr_l
-                    cmd_vr = 0.65 * v_obs_r + 0.35 * v_tr_r
+                    cmd_vl = v_obs_l
+                    cmd_vr = v_obs_r
                     mode = "OBSTACLE_AVOIDANCE"
                 else:
-                    cmd_vl, cmd_vr = tracking_ctrl.evaluate(pos_error, heading_error)
-                    mode = "TRACKING"
+                    # KESKİN DÖNÜŞ (Pivot / In-Place Turn):
+                    # Robot yeni hedefe yönelirken açı farkı > 25 derece ise ileri gitmeyip
+                    # olduğu yerde kendi ekseni etrafında döner (Gereksiz yay ve daire çizmez)
+                    abs_head_deg = abs(math.degrees(heading_error))
+                    if abs_head_deg > 25.0:
+                        turn_speed = 1.8
+                        if heading_error > 0:  # Hedef solda -> Sola nokta dönüşü
+                            cmd_vl = -turn_speed
+                            cmd_vr =  turn_speed
+                        else:                  # Hedef sağda -> Sağa nokta dönüşü
+                            cmd_vl =  turn_speed
+                            cmd_vr = -turn_speed
+                        mode = "PIVOT_TURN"
+                    else:
+                        # Açı kilitlendiğinde tam gaz hedefin merkezine doğru ilerle
+                        cmd_vl, cmd_vr = tracking_ctrl.evaluate(pos_error, heading_error)
+                        mode = "TRACKING"
 
-                # Hızları yumuşat (Low-pass filter ile ani titreme ve salınımları engelle)
-                alpha = 0.45
+                # Hız filtreleme
+                alpha = 0.60
                 v_l = alpha * cmd_vl + (1.0 - alpha) * last_vl
                 v_r = alpha * cmd_vr + (1.0 - alpha) * last_vr
                 last_vl, last_vr = v_l, v_r
 
-                # Hızları motora gönder
                 robot.set_wheel_velocities(v_l, v_r)
 
                 step_count += 1
@@ -208,15 +228,9 @@ def run_navigation():
                 })
 
                 if step % 10 == 0:
-                    print(f"[{mode:<18}] Kalan: {pos_error:.2f} m | Açı: {math.degrees(heading_error):+.1f}° | Sol: {d_left:.2f}m, Sağ: {d_right:.2f}m | L={v_l:.2f}, R={v_r:.2f}", flush=True)
+                    print(f"[{mode:<18}] Kalan: {pos_error:.2f} m | Açı: {math.degrees(heading_error):+.1f}° | L={v_l:.2f}, R={v_r:.2f}", flush=True)
 
-                # Hedefe ulaşma kontrolü (Hedef küresinin tam göbeği)
-                if pos_error < goal_reach_threshold:
-                    goal_reached = True
-                    print(f">>> TEBRİKLER: {target_name} noktasının TAM ÜSTÜNDEN GEÇİLDİ! (Hata: {pos_error:.3f} m)", flush=True)
-                    break
-
-                time.sleep(0.08)
+                time.sleep(0.06)
 
             if not goal_reached:
                 print(f">>> Zaman aşımı nedeniyle sonraki hedefe geçiliyor...", flush=True)
