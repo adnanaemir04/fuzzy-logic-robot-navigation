@@ -16,10 +16,11 @@ import numpy as np
 
 
 class GeneticTSP:
-    def __init__(self, start_pos, goal_points, pop_size=50, generations=100, mutation_rate=0.15):
+    def __init__(self, start_pos, goal_points, pop_size=50, generations=100, mutation_rate=0.15, obstacle_segments=None):
         """
         start_pos: Robotun başlangıç konumu [x, y]
         goal_points: Ziyaret edilecek hedef noktaların listesi [[x1, y1], [x2, y2], ...]
+        obstacle_segments: [((x1, y1), (x2, y2)), ...] duvar çizgi segmentleri
         """
         self.start_pos = np.array(start_pos)
         self.goal_points = np.array(goal_points)
@@ -27,9 +28,22 @@ class GeneticTSP:
         self.pop_size = pop_size
         self.generations = generations
         self.mutation_rate = mutation_rate
+        self.obstacle_segments = obstacle_segments or []
+
+    def _ccw(self, A, B, C):
+        return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+    def _intersect(self, A, B, C, D):
+        """AB doğru parçası ile CD doğru parçası kesişiyor mu kontrol eder."""
+        return self._ccw(A, C, D) != self._ccw(B, C, D) and self._ccw(A, B, C) != self._ccw(A, B, D)
 
     def _euclidean_distance(self, p1, p2):
-        return math.hypot(p1[0] - p2[0], p1[1] - p2[1])
+        base_d = math.hypot(p1[0] - p2[0], p1[1] - p2[1])
+        # Eğer bu iki nokta arasındaki düz hat bir duvarı delip geçiyorsa yüksek ceza ekle:
+        for seg in self.obstacle_segments:
+            if self._intersect(p1, p2, seg[0], seg[1]):
+                base_d += 12.0  # Duvarı doğrudan delip geçme cezası (dolambaç maliyeti)
+        return base_d
 
     def calculate_total_distance(self, tour):
         """
