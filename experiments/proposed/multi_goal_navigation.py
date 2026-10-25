@@ -85,11 +85,11 @@ def run_navigation():
             [start_x + 2.70, start_y + 1.35],   # G5: Orta koridor iç hedefi
             [start_x + 3.25, start_y + 0.20],   # G6: Orta koridordan sağ kapıya yöneliş
 
-            # --- SAĞ KANAT (Sağ Dikey Duvarın Sağ Tarafı - Kutunun Önündeki Açık Alan) ---
+            # --- SAĞ KANAT (Sağ Dikey Duvarın Sağ Tarafı - Kutunun Solundaki Açık Koridor) ---
             [start_x + 4.15, start_y + 0.20],   # G7: Sağ kapıdan sağ kanada çıkış
-            [start_x + 4.85, start_y + 0.55],   # G8: Sağ alt köşe hedef
-            [start_x + 4.35, start_y + 1.35],   # G9: Sağ kutu altı açık alan
-            [start_x + 4.35, start_y + 2.65],   # G10: Sağ kutu üstü açık alan
+            [start_x + 4.30, start_y + 0.65],   # G8: Sağ alt açık alan (kutunun sağ köşesine gitmez)
+            [start_x + 4.30, start_y + 1.45],   # G9: Sağ kutunun solu/önü
+            [start_x + 4.30, start_y + 2.65],   # G10: Sağ kutunun üst açık alanı
         ]
 
         print("\n[Görselleştirme] Kullanıcının Çizdiği 11 Hedef Küresi ve Kroki Ortamı Sahneye Ekleniyor...", flush=True)
@@ -97,11 +97,11 @@ def run_navigation():
 
         # Duvar ve koridor kısıtlamaları:
         # 1. Sol ve sağ dikey duvarların altı (y <= 0.25) AÇIK KAPI'dır, yukarısı duvardır.
-        # 2. Sağ kutunun içinden kestirmeden geçilmemesi için kutu ekseni tanımlanır.
+        # 2. Sağ kutunun sağına dolanmayı engellemek için kutu gövdesi ve sağı GA için bloklanır.
         obstacle_segments = [
             ((start_x + 1.60, start_y + 0.35), (start_x + 1.60, start_y + 5.0)),
             ((start_x + 3.80, start_y + 0.35), (start_x + 3.80, start_y + 5.0)),
-            ((start_x + 4.50, start_y + 2.05), (start_x + 5.30, start_y + 2.05)),
+            ((start_x + 4.35, start_y + 2.05), (start_x + 6.00, start_y + 2.05)),
         ]
 
         # 2. Aşama: GA (Genetik Algoritma) ile En Kısa TSP Sırasını Çöz (Doğal koridor akışıyla)
@@ -117,20 +117,17 @@ def run_navigation():
 
         ordered_goals = [goal_points[i] for i in best_tour]
         
-        # Güvenli Dönüş Yolu (Sağ kanattan başlangıç üssüne duvara çarpmadan alt kapılardan geçerek dönüş):
-        # Eğer son hedef sağ kanatta veya orta koridordaysa, başlangıç üssüne (start_x, start_y)
-        # dönmek için alt kapı geçiş noktaları eklenir:
+        # Görev tamamlandıktan sonra başlangıç üssüne (Mavi nokta) doğrudan en kısa dönüş:
+        # Düğümlerin üzerinden tekrar geçilmez. Sadece sağ kanattan dönerken dikey duvarlara
+        # toslamamak için alt açık koridordan (y ~ 0.0) dümdüz kestirmeden başlangıca akar:
         last_goal = ordered_goals[-1]
-        if last_goal[0] > start_x + 3.5:  # Sağ kanattaysa
-            ordered_goals.append([start_x + 4.15, start_y + 0.20])  # Sağ kapı
-            ordered_goals.append([start_x + 3.25, start_y + 0.20])  # Orta koridor
-            ordered_goals.append([start_x + 2.05, start_y + 0.20])  # Sol kapı
-        elif last_goal[0] > start_x + 1.5:  # Orta koridordaysa
-            ordered_goals.append([start_x + 2.05, start_y + 0.20])  # Sol kapı
+        if last_goal[0] > start_x + 1.8:
+            # Sağ kanattan veya orta koridordan alt boş koridor hizasından kestirme geçiş noktası
+            ordered_goals.append([start_x + 1.80, start_y - 0.10])
 
-        ordered_goals.append([start_x, start_y])  # Başlangıç noktasına dönüş (Mavi nokta)
+        ordered_goals.append([start_x, start_y])  # Başlangıç noktasına doğrudan varış (Mavi nokta)
 
-        print(f"[GA] Optimum Rota Belirlendi: Ziyaret Sırası = {best_tour} -> Güvenli Koridor Dönüşü -> Mavi Nokta (Depot)", flush=True)
+        print(f"[GA] Optimum Rota Belirlendi: Ziyaret Sırası = {best_tour} -> Kestirmeden Mavi Noktaya Dönüş", flush=True)
         print(f"[GA] Tahmini Rota Mesafesi: {est_distance:.2f} m\n", flush=True)
 
         trajectory_log = []

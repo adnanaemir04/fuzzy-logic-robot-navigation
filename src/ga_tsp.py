@@ -45,6 +45,19 @@ class GeneticTSP:
                 base_d += 12.0  # Duvarı doğrudan delip geçme cezası (dolambaç maliyeti)
         return base_d
 
+    def _return_distance(self, p):
+        """Son hedeften başlangıç üssüne fiziksel koridor kapılarından dönüş mesafesi."""
+        # Sağ kanattaysa (x > start_pos[0] + 3.8):
+        if p[0] > self.start_pos[0] + 3.8:
+            kapi_sag = (self.start_pos[0] + 4.15, self.start_pos[1] + 0.20)
+            return math.hypot(p[0] - kapi_sag[0], p[1] - kapi_sag[1]) + 4.2
+        # Orta koridordaysa (x > start_pos[0] + 1.6):
+        elif p[0] > self.start_pos[0] + 1.6:
+            kapi_sol = (self.start_pos[0] + 2.05, self.start_pos[1] + 0.20)
+            return math.hypot(p[0] - kapi_sol[0], p[1] - kapi_sol[1]) + 2.1
+        else:
+            return math.hypot(p[0] - self.start_pos[0], p[1] - self.start_pos[1])
+
     def calculate_total_distance(self, tour):
         """
         Belirli bir ziyaret sırasının toplam yol uzunluğunu hesaplar.
@@ -56,8 +69,8 @@ class GeneticTSP:
             target = self.goal_points[goal_idx]
             dist += self._euclidean_distance(current_pos, target)
             current_pos = target
-        # Başlangıca dönüş
-        dist += self._euclidean_distance(current_pos, self.start_pos)
+        # Başlangıca dönüş (gerçek koridor mesafesiyle)
+        dist += self._return_distance(current_pos)
         return dist
 
     def _order_crossover(self, parent1, parent2):
