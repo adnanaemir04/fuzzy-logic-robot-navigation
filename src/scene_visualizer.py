@@ -83,6 +83,14 @@ class SceneVisualizer:
                 self.sim.setObjectPosition(obs, -1, [float(ox), float(oy), 0.3])
                 self.sim.setShapeColor(obs, '', self.sim.colorcomponent_ambient_diffuse, [0.9, 0.1, 0.1])  # Kırmızı silindir
                 self.sim.setObjectAlias(obs, f"VisualObstacle_{i+1}")
+                # Engeller sensör tarafından algılanabilir (detectable) ve fiziksel çarpışabilir (collidable) olmalıdır:
+                props = (self.sim.objectspecialproperty_collidable | 
+                         self.sim.objectspecialproperty_measurable | 
+                         self.sim.objectspecialproperty_detectable | 
+                         self.sim.objectspecialproperty_renderable)
+                self.sim.setObjectSpecialProperty(obs, props)
+                # Fiziksel respondable yap (Robot içinden geçemez):
+                self.sim.setObjectInt32Param(obs, self.sim.shapeintparam_respondable, 1)
                 self.obstacle_handles.append(obs)
             except Exception:
                 pass
@@ -102,6 +110,14 @@ class SceneVisualizer:
                 color = w.get('color', [0.85, 0.4, 0.1])
                 self.sim.setShapeColor(wall, '', self.sim.colorcomponent_ambient_diffuse, color)
                 self.sim.setObjectAlias(wall, f"WallObstacle_{i+1}")
+                # Duvarlar sensör tarafından algılanabilir ve fiziksel çarpışabilir olmalıdır:
+                props = (self.sim.objectspecialproperty_collidable | 
+                         self.sim.objectspecialproperty_measurable | 
+                         self.sim.objectspecialproperty_detectable | 
+                         self.sim.objectspecialproperty_renderable)
+                self.sim.setObjectSpecialProperty(wall, props)
+                # Fiziksel respondable yap (Robot duvarın içinden geçemez):
+                self.sim.setObjectInt32Param(wall, self.sim.shapeintparam_respondable, 1)
                 self.obstacle_handles.append(wall)
             except Exception:
                 pass
