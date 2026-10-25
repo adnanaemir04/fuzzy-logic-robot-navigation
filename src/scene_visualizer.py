@@ -98,10 +98,53 @@ class SceneVisualizer:
                 sx, sy, sz = w.get('size', [1.5, 0.25, 0.6])
                 wall = self.sim.createPrimitiveShape(self.sim.primitiveshape_cuboid, [float(sx), float(sy), float(sz)])
                 self.sim.setObjectPosition(wall, -1, [float(wx), float(wy), sz / 2.0])
-                # Tuğla / koyu turuncu-kahve duvar rengi
-                self.sim.setShapeColor(wall, '', self.sim.colorcomponent_ambient_diffuse, [0.85, 0.4, 0.1])
+                # Duvar rengi
+                color = w.get('color', [0.85, 0.4, 0.1])
+                self.sim.setShapeColor(wall, '', self.sim.colorcomponent_ambient_diffuse, color)
                 self.sim.setObjectAlias(wall, f"WallObstacle_{i+1}")
                 self.obstacle_handles.append(wall)
+            except Exception:
+                pass
+
+    def setup_sketch_environment(self, origin=[0.0, 0.0]):
+        """
+        Kullanıcının çizdiği krokinin birebir ortamı:
+        - Mavi nokta sol alt köşe (origin: [ox, oy])
+        - 1. Siyah Dikey Duvar (Sol kanat ile orta arasında)
+        - 2. Kırmızı Dikey Duvar (Orta ile sağ kanat arasında)
+        - 3. Kırmızı Dikdörtgen Kutu Engeller (Sol üst, Üst orta, Sağ kanat)
+        """
+        ox, oy = origin
+        
+        # 1. Duvarlar (Siyah Sol Dikey Duvar & Kırmızı Sağ Dikey Duvar)
+        walls = [
+            # Sol Dikey Duvar (Siyah Çizgi - Çizimde aşağısı açık, Y=0.55'ten Y=2.35'e uzanır, boy: 1.8m):
+            {"pos": [ox + 1.60, oy + 1.45], "size": [0.08, 1.8, 0.6], "color": [0.1, 0.1, 0.1]},
+            # Sağ Dikey Duvar (Kırmızı Çizgi - Çizimde aşağısı açık, Y=0.55'ten Y=2.55'e uzanır, boy: 2.0m):
+            {"pos": [ox + 3.80, oy + 1.55], "size": [0.08, 2.0, 0.6], "color": [0.9, 0.1, 0.1]},
+        ]
+        self.add_walls(walls)
+
+        # 2. Kırmızı Dikdörtgen Kutu Engeller (Kullanıcı çizimi):
+        red_boxes = [
+            # Sol üstteki kare/dikdörtgen kırmızı kutu (G1 ve G2 arasında, sol duvarın solunda):
+            {"pos": [ox + 1.15, oy + 2.50], "size": [0.45, 0.40, 0.5]},
+            # Üst ortadaki dikey kırmızı kutu (G2 ve G4 arasında en tepede):
+            {"pos": [ox + 2.65, oy + 2.80], "size": [0.35, 0.60, 0.5]},
+            # Sağdaki yatay kırmızı kutu (Sağ duvarın sağında, G8 ile G9 arasında yatay dikdörtgen):
+            {"pos": [ox + 4.90, oy + 2.05], "size": [0.75, 0.35, 0.5]},
+        ]
+        for i, box in enumerate(red_boxes):
+            try:
+                bx, by = box['pos']
+                sx, sy, sz = box['size']
+                b = self.sim.createPrimitiveShape(self.sim.primitiveshape_cuboid, [float(sx), float(sy), float(sz)])
+                self.sim.setObjectPosition(b, -1, [float(bx), float(by), sz / 2.0])
+                self.sim.setShapeColor(b, '', self.sim.colorcomponent_ambient_diffuse, [0.95, 0.1, 0.1])
+                self.sim.setObjectAlias(b, f"SketchRedBox_{i+1}")
+                self.obstacle_handles.append(b)
+            except Exception:
+                pass
             except Exception:
                 pass
 

@@ -67,71 +67,47 @@ def run_navigation():
         start_x, start_y, start_yaw = robot.get_pose()
         print(f"Robot Başlangıç Konumu: X={start_x:.2f}, Y={start_y:.2f}, Yaw={math.degrees(start_yaw):.1f}°", flush=True)
 
-        # Sahneye eklenecek DUVAR ENGELLERİ:
-        wall_configs = [
-            {"pos": [start_x - 0.5, start_y + 0.4], "size": [0.15, 0.8, 0.5]},
-            {"pos": [start_x + 0.7, start_y - 0.4], "size": [0.8, 0.15, 0.5]},
+        # 1. Kullanıcının Çizdiği Kroki Ortamı ve Hedefleri:
+        # Mavi Nokta: Robotun başlangıç ve bitiş üssü (start_x, start_y)
+        visualizer.setup_sketch_environment(origin=[start_x, start_y])
+
+        # Çizimdeki 11 Hedef Noktasının Krokiye Göre Tam Genişletilmiş Koordinatları:
+        # Sol kanat (X ~ -0.4 -> 1.5):
+        # Orta koridor (X ~ 1.8 -> 3.7):
+        # Sağ kanat (X ~ 4.4 -> 5.0): En sağ noktalar iyice sağa kaydırıldı
+        goal_points = [
+            [start_x + 0.45, start_y + 0.55],   # G0: Sol alt hedef (Mavi noktanın hafif sağ-üstü)
+            [start_x - 0.35, start_y + 1.25],   # G1: En sol orta hedef (Sol dış bükey kavis)
+            [start_x + 0.25, start_y + 2.25],   # G2: Sol üst hedef (Sol kutunun solunda)
+            [start_x + 1.35, start_y + 2.65],   # G3: Sol üst kutunun sağındaki tepe hedef
+            [start_x + 1.85, start_y + 0.25],   # G4: Siyah çember hedef (Sol dikey duvarın hemen alt ucu)
+            [start_x + 2.65, start_y + 1.80],   # G5: Orta koridor iç hedef
+            [start_x + 2.90, start_y + 0.30],   # G6: Orta alt hedef (Kırmızı dikey duvarın sol altı)
+            [start_x + 3.75, start_y + 2.55],   # G7: Sağ dikey duvarın üst başı hedef
+            [start_x + 4.90, start_y + 2.50],   # G8: En sağ üst hedef (Yatay kutunun üstü)
+            [start_x + 4.50, start_y + 1.40],   # G9: Sağ iç hedef (Yatay kutunun altı)
+            [start_x + 5.00, start_y + 0.30],   # G10: En sağ alt köşe hedef
         ]
 
-        # Zeminin içine serpiştirilmiş silindir engeller:
-        obstacle_coords = [
-            [start_x + 0.0, start_y - 0.6],
-            [start_x - 0.5, start_y - 0.7],
-            [start_x + 0.5, start_y + 0.8],
-        ]
-
-        # HER ÇALIŞTIRMADA TAMAMEN RASTGELE 10 HEDEF NOKTASI ÜRETİLİR
-        # Hedefler zemin sınırları ([-1.7m, +1.7m]) içinde, duvarlarla ve birbirleriyle çakışmayacak şekilde dinamik oluşturulur:
-        def generate_random_goals(num_targets=10):
-            import random
-            goals = []
-            while len(goals) < num_targets:
-                gx = round(random.uniform(start_x - 1.6, start_x + 1.6), 2)
-                gy = round(random.uniform(start_y - 1.6, start_y + 1.6), 2)
-                if math.hypot(gx - start_x, gy - start_y) < 0.6:
-                    continue
-                conflict = False
-                for w in wall_configs:
-                    if math.hypot(gx - w['pos'][0], gy - w['pos'][1]) < 0.45:
-                        conflict = True
-                        break
-                for c in obstacle_coords:
-                    if math.hypot(gx - c[0], gy - c[1]) < 0.45:
-                        conflict = True
-                        break
-                for og in goals:
-                    if math.hypot(gx - og[0], gy - og[1]) < 0.45:
-                        conflict = True
-                        break
-                if not conflict:
-                    goals.append([gx, gy])
-            return goals
-
-        goal_points = generate_random_goals(10)
-
-        # 1. Aşama: Sahneye Görsel Öğeleri Ekle (İz Çizgisi, Hedef Küreleri, Engeller, Duvarlar)
-        print("\n[Görselleştirme] Sahneye 10 Adet Dengeli Dağıtılmış Hedef Küresi, Silindirler ve DUVAR Engelleri ekleniyor...", flush=True)
+        print("\n[Görselleştirme] Kullanıcının Çizdiği 11 Hedef Küresi ve Kroki Ortamı Sahneye Ekleniyor...", flush=True)
         visualizer.setup_visuals(goal_points, [start_x, start_y])
-        visualizer.add_obstacles(obstacle_coords)
-        visualizer.add_walls(wall_configs)
 
-        # 2. Aşama: GA ile En Kısa TSP Sırasını Çöz (10 Hedefli TSP)
-        print("\n[GA] 10 Hedefli TSP Problemi için Genetik Algoritma çalıştırılıyor...", flush=True)
+        # 2. Aşama: GA (Genetik Algoritma) ile En Kısa TSP Sırasını Çöz
+        print("\n[GA] 11 Hedefli Çizim Rotası için Genetik Algoritma çalıştırılıyor...", flush=True)
         ga = GeneticTSP(start_pos=[start_x, start_y], goal_points=goal_points, pop_size=60, generations=80)
         best_tour, est_distance = ga.solve()
 
         ordered_goals = [goal_points[i] for i in best_tour]
-        ordered_goals.append([start_x, start_y])  # Başlangıç noktasına dönüş
+        ordered_goals.append([start_x, start_y])  # Başlangıç noktasına dönüş (Mavi nokta)
 
-        print(f"[GA] Optimum Rota Belirlendi: Ziyaret Sırası = {best_tour} -> Başlangıç", flush=True)
+        print(f"[GA] Optimum Rota Belirlendi: Ziyaret Sırası = {best_tour} -> Mavi Nokta (Depot)", flush=True)
         print(f"[GA] Tahmini Rota Mesafesi: {est_distance:.2f} m\n", flush=True)
 
-        # Metrik loglama için liste
         trajectory_log = []
         step_count = 0
         total_path_length = 0.0
         prev_x, prev_y = start_x, start_y
-        goal_reach_threshold = 0.12  # metre (Robotun hedefin TAM MERKEZİNDEN geçmesini garanti eder)
+        goal_reach_threshold = 0.22
 
         start_time = time.time()
         last_vl = 0.0
@@ -145,44 +121,82 @@ def run_navigation():
 
             goal_reached = False
 
-            # Hedefe ulaşmak için yeterli adım sayısı
+            # 1. ÖNCE HEDEFE DÖNÜŞ (DÜZ GİTME GARANTİSİ):
+            # Robot bir sonraki hedefe hareket etmeden önce yerinde durur ve tam hedefe döner.
+            # Böylece kavisli gitmez, hedefe dön -> ok gibi düz git!
+            robot.stop_motors()
+            time.sleep(0.05)
+            for align_step in range(80):
+                cur_x, cur_y, cur_yaw = robot.get_pose()
+                dx = target_x - cur_x
+                dy = target_y - cur_y
+                target_angle = math.atan2(dy, dx)
+                head_err = normalize_angle(target_angle - cur_yaw)
+
+                if abs(math.degrees(head_err)) < 4.0:
+                    break
+
+                # Yerinde dönüş hızı (açı yaklaştıkça yumuşat)
+                turn_mag = 1.6 if abs(math.degrees(head_err)) > 20.0 else 0.9
+                if head_err > 0:
+                    robot.set_wheel_velocities(-turn_mag, turn_mag)
+                else:
+                    robot.set_wheel_velocities(turn_mag, -turn_mag)
+                time.sleep(0.02)
+
+            robot.stop_motors()
+            time.sleep(0.04)
+            last_vl, last_vr = 0.0, 0.0
+
+            # 2. ŞİMDİ HEDEFE OK GİBİ DÜMDÜZ İLERLE:
             for step in range(350):
                 cur_x, cur_y, cur_yaw = robot.get_pose()
-
-                # Sahneye robotun arkasından canlı kırmızı iz çiz
                 visualizer.update_trail(cur_x, cur_y)
 
-                # Yol uzunluğunu topla
                 step_dist = math.hypot(cur_x - prev_x, cur_y - prev_y)
                 total_path_length += step_dist
                 prev_x, prev_y = cur_x, cur_y
 
-                # Mesafe ve Açı Hatası
                 dx = target_x - cur_x
                 dy = target_y - cur_y
                 pos_error = math.hypot(dx, dy)
 
+                # Hedefin TAM ÜSTÜNE BASILDIĞI AN BİTİR:
+                if pos_error < goal_reach_threshold:
+                    goal_reached = True
+                    print(f">>> TEBRİKLER: {target_name} noktasının TAM ÜSTÜNDEN GEÇİLDİ! (Mesafe: {pos_error:.3f} m)", flush=True)
+                    break
+
                 target_angle = math.atan2(dy, dx)
                 heading_error = normalize_angle(target_angle - cur_yaw)
 
-                # Ön sensörleri oku
                 d_left, d_right = robot.read_front_sensors()
 
-                # Hedefe son yaklaşmada (0.35m altı) robot doğrudan hedefe kilitlenir
-                # Uzaktayken gerçek engeller için kaçış uygulanır
+                # Engel kaçışı: Hedefe son 0.35m kala devre dışı
                 is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right) and (pos_error > 0.35)
 
                 if is_obstacle:
-                    v_obs_l, v_obs_r = avoidance_ctrl.evaluate(d_left, d_right)
-                    v_tr_l, v_tr_r = tracking_ctrl.evaluate(pos_error, heading_error)
-                    cmd_vl = 0.65 * v_obs_l + 0.35 * v_tr_l
-                    cmd_vr = 0.65 * v_obs_r + 0.35 * v_tr_r
+                    cmd_vl, cmd_vr = avoidance_ctrl.evaluate(d_left, d_right)
                     mode = "OBSTACLE_AVOIDANCE"
                 else:
-                    cmd_vl, cmd_vr = tracking_ctrl.evaluate(pos_error, heading_error)
+                    # DÜZ GİT: Önceden hizalandığı için dümdüz ilerler
+                    # Ufak sapmalarda oransal mikro-düzeltme ile düz çizgide tutar, geniş kavis yapmaz
+                    base_v = 2.4
+                    if pos_error < 0.35:
+                        base_v = max(1.0, base_v * (pos_error / 0.35))
+
+                    deg_err = math.degrees(heading_error)
+                    if abs(deg_err) < 5.0:
+                        cmd_vl, cmd_vr = base_v, base_v
+                    else:
+                        # Düz çizgiyi korumak için hafif oransal düzeltme (kavis çizmeden hedefe kilitli tutar)
+                        kp = 0.035
+                        diff = max(-0.8, min(0.8, kp * deg_err))
+                        cmd_vl = base_v - diff
+                        cmd_vr = base_v + diff
                     mode = "TRACKING"
 
-                # Hızları yumuşat (Low-pass filter ile ani titreme ve salınımları engelle)
+                # Hızları yumuşat (Low-pass filter)
                 alpha = 0.45
                 v_l = alpha * cmd_vl + (1.0 - alpha) * last_vl
                 v_r = alpha * cmd_vr + (1.0 - alpha) * last_vr
