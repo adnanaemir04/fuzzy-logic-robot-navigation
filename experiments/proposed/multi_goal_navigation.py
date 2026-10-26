@@ -174,7 +174,7 @@ def run_navigation():
             last_vl, last_vr = 0.0, 0.0
 
             # 2. HEDEFE DOĞRU İLERLE VE ENGELLERDEN KAÇIN:
-            for step in range(500):
+            for step in range(600):
                 cur_x, cur_y, cur_yaw = robot.get_pose()
                 visualizer.update_trail(cur_x, cur_y)
 
@@ -186,7 +186,7 @@ def run_navigation():
                 dy = target_y - cur_y
                 pos_error = math.hypot(dx, dy)
 
-                # Hedefin merkezinden geçildiğinde tamamla
+                # Hedefin tam merkezinden geçildiğinde tamamla (Merkeze kilitlenme)
                 if pos_error < goal_reach_threshold:
                     goal_reached = True
                     print(f">>> TEBRİKLER: {target_name} noktasının TAM MERKEZİNDEN GEÇİLDİ! (Mesafe: {pos_error:.3f} m)", flush=True)
@@ -199,8 +199,8 @@ def run_navigation():
 
                 # Engel algılama (Fuzzy Obstacle Avoidance):
                 is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right)
-                # Hedefe son 0.16m kala sadece acil çarpışma durumunda kaçın:
-                if pos_error < 0.16 and min(d_left, d_right) > 0.20:
+                # Hedefe son metrelerde hedef küresini engel sanıp kaçmayı önle:
+                if pos_error < 0.35 and min(d_left, d_right) > 0.22:
                     is_obstacle = False
 
                 if is_obstacle:
@@ -209,32 +209,34 @@ def run_navigation():
                     cmd_vr = v_obs_r
                     mode = "OBSTACLE_AVOIDANCE"
                 else:
-                    # Hedefe yaklaşırken hızı orantılı yumuşat
-                    base_v = 2.0
-                    if pos_error < 0.45:
-                        base_v = max(0.8, base_v * (pos_error / 0.45))
-
+                    # Makaledeki Fuzzy Tracking Denetleyicisi:
+                    # Hedefe yaklaşırken aşırı savrulmayı (overshoot) önlemek için
+                    # son 0.45 metrede hızı doğrusal olarak sönümle (Deceleration):
+                    vl_fuzzy, vr_fuzzy = tracking_ctrl.evaluate(pos_error, heading_error)
+                    
                     deg_err = math.degrees(heading_error)
-                    if abs(deg_err) > 30.0:
-                        # Rotadan sapma durumunda yerinde yumuşak toparlanma
-                        turn_speed = 1.3
+                    if abs(deg_err) > 35.0:
+                        # Rotadan büyük sapma varsa yerinde toparlan (en kısa yay çizimi için)
+                        turn_speed = 1.1
                         if heading_error > 0:
                             cmd_vl, cmd_vr = -turn_speed, turn_speed
                         else:
                             cmd_vl, cmd_vr = turn_speed, -turn_speed
                         mode = "PIVOT_RECOVERY"
-                    elif abs(deg_err) < 4.0:
-                        cmd_vl, cmd_vr = base_v, base_v
-                        mode = "TRACKING_STRAIGHT"
                     else:
-                        kp = 0.028
-                        diff = max(-0.65, min(0.65, kp * deg_err))
-                        cmd_vl = base_v - diff
-                        cmd_vr = base_v + diff
-                        mode = "TRACKING"
+                        # Makale tabanlı hız sönümleme:
+                        # Hedefe yaklaştıkça hızı yumuşatarak tam merkezden geçişi garantile
+                        if pos_error < 0.40:
+                            scale = max(0.35, pos_error / 0.40)
+                            cmd_vl = vl_fuzzy * scale
+                            cmd_vr = vr_fuzzy * scale
+                        else:
+                            cmd_vl = vl_fuzzy
+                            cmd_vr = vr_fuzzy
+                        mode = "FUZZY_TRACKING"
 
-                # Hızları yumuşat (Low-pass filter)
-                alpha = 0.45
+                # Hızları yumuşat (Low-pass filter ile tekerlek patinajını önle)
+                alpha = 0.50
                 v_l = alpha * cmd_vl + (1.0 - alpha) * last_vl
                 v_r = alpha * cmd_vr + (1.0 - alpha) * last_vr
                 last_vl, last_vr = v_l, v_r
