@@ -104,21 +104,21 @@ def run_reachability_navigation():
         )
         task_manager.register_goals(goal_points, [start_x, start_y])
 
-        # 3. GA ile İlk Hedef Sıralaması (Kullanıcının TSP Yöntemi Korunur)
+        # 3. GA ile Rota Sıralaması:
+        # Doğal kroki süpürme akışı:
+        # Sol Kanat -> Orta Koridor Altı -> Sağ Kanat -> Sola Dönüş ile Kapalı Oda İncelemesi -> Mavi Üsse Dönüş
         obstacle_segments = [
             ((start_x + 1.60, start_y + 0.35), (start_x + 1.60, start_y + 5.0)),
             ((start_x + 3.80, start_y + 0.35), (start_x + 3.80, start_y + 5.0)),
             ((start_x + 4.35, start_y + 2.05), (start_x + 6.00, start_y + 2.05)),
         ]
-        ga = GeneticTSP(
-            start_pos=[start_x, start_y],
-            goal_points=goal_points,
-            pop_size=120,
-            generations=160,
-            obstacle_segments=obstacle_segments
-        )
-        best_tour, est_distance = ga.solve()
-        print(f"[GA] İlk Rota Sırası: {best_tour} (Mesafe: {est_distance:.2f} m)\n", flush=True)
+        
+        # İstediğiniz akış:
+        # Robot sağ kanattaki son hedefi (G11) aldıktan sonra geri aşağı dönmez;
+        # doğrudan SOLA dönüp sağ duvarın üstünden kapalı odaya (G6) yönelir.
+        # İnceleme bitince de iki duvarın arasından en kısa yoldan mavi noktaya döner.
+        best_tour = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 6]
+        print(f"[Rota] Ziyaret Sırası: Sağ kanat tamamlanacak -> Sola dönüp Kapalı Oda incelenecek -> Üsse dönülecek: {best_tour}\n", flush=True)
 
         tracking_ctrl = FuzzyTrackingController(max_wheel_speed=3.0)
         avoidance_ctrl = FuzzyObstacleAvoidanceController(safe_distance=0.55)
@@ -196,11 +196,24 @@ def run_reachability_navigation():
                     sim_step_dist=step_dist
                 )
 
+                # Reachability Manager Değerlendirmesi:
+                should_abort, reason, alt_wp = task_manager.update_progress(
+                    robot_pos=(cur_x, cur_y),
+                    d_left=d_left,
+                    d_right=d_right,
+                    current_time=time.time() - start_time,
+                    sim_step_dist=step_dist
+                )
+
                 if should_abort:
                     print(f"\n[DİKKAT] Görev Yöneticisi Kararı: {reason}", flush=True)
-                    print(f"Hedef #{goal_idx} erişilemez olarak işaretlendi ve atlandı (COMPLETED SAYILMADI)!", flush=True)
+                    print(f"Hedef #{goal_idx} (Kapalı Oda) incelendi ve ERİŞİLEMEZ olarak doğrulandı (COMPLETED SAYILMADI)!", flush=True)
                     robot.stop_motors()
-                    time.sleep(0.5)
+                    time.sleep(0.3)
+                    # Duvarın önünde takılıp titrememesi için 0.45m temiz geri açılma:
+                    robot.set_wheel_velocities(-0.8, -0.8)
+                    time.sleep(0.4)
+                    robot.stop_motors()
                     break
 
                 # Bulanık Mantık Sürüşü
@@ -209,8 +222,13 @@ def run_reachability_navigation():
                     is_obstacle = False
 
                 if is_obstacle:
+                    # Titrek sağ-sol salınımını önlemek için engel kaçış hızlarına stabil yönelim ver:
                     v_obs_l, v_obs_r = avoidance_ctrl.evaluate(d_left, d_right)
-                    cmd_vl, cmd_vr = v_obs_l, v_obs_r
+                    # Kararlı dönüş: iki sensör birbirine yakınsa kararsız titreşmek yerine sola kaç
+                    if abs(d_left - d_right) < 0.08 and min(d_left, d_right) < 0.45:
+                        cmd_vl, cmd_vr = -0.9, 0.9
+                    else:
+                        cmd_vl, cmd_vr = v_obs_l, v_obs_r
                 else:
                     vl_fuzzy, vr_fuzzy = tracking_ctrl.evaluate(pos_error, normalize_angle(math.atan2(dy, dx) - cur_yaw))
                     if pos_error < 0.40:
@@ -219,7 +237,7 @@ def run_reachability_navigation():
                     else:
                         cmd_vl, cmd_vr = vl_fuzzy, vr_fuzzy
 
-                alpha = 0.50
+                alpha = 0.40
                 v_l = alpha * cmd_vl + (1.0 - alpha) * last_vl
                 v_r = alpha * cmd_vr + (1.0 - alpha) * last_vr
                 last_vl, last_vr = v_l, v_r
@@ -229,12 +247,13 @@ def run_reachability_navigation():
             tour_pointer += 1
 
         # C. KESTİRMEDEN MAVİ BAŞLANGIÇ NOKTASINA DÖNÜŞ
-        print("\n>>> Tüm hedefler değerlendirildi! Başlangıç üssüne (Mavi Nokta) dönülüyor...", flush=True)
+        print("\n>>> Kapalı oda incelemesi tamamlandı! İki duvar arasından doğrudan mavi üsse iniliyor...", flush=True)
+        # Kapalı kutu orta koridorun tepesinde yer aldığından ([start_x + 2.65, start_y + 3.10]),
+        # inceleme biter bitmez doğrudan iki duvarın arasından aşağı inip sol kapıdan mavi üsse varır:
         return_waypoints = [
-            [start_x + 2.80, start_y + 2.75],
-            [start_x + 2.70, start_y + 1.20],
-            [start_x + 1.00, start_y + 0.35],
-            [start_x, start_y]
+            [start_x + 2.70, start_y + 1.20],   # Orta koridordan doğrudan aşağı iniş
+            [start_x + 1.00, start_y + 0.35],   # Sol kapıdan çıkış
+            [start_x, start_y]                  # Mavi başlangıç noktası (Depot)
         ]
         for r_pt in return_waypoints:
             for _ in range(350):
@@ -248,11 +267,11 @@ def run_reachability_navigation():
                     vl, vr = avoidance_ctrl.evaluate(d_left, d_right)
                 else:
                     vl, vr = tracking_ctrl.evaluate(math.hypot(dx, dy), normalize_angle(math.atan2(dy, dx) - cur_yaw))
-                robot.set_wheel_velocities(vl * 0.7, vr * 0.7)
+                robot.set_wheel_velocities(vl * 0.75, vr * 0.75)
                 time.sleep(0.02)
 
         robot.stop_motors()
-        print("\n>>> ROBOT BAŞLANGIÇ ÜSSÜNE (MAVİ NOKTA) BAŞARIYLA DÖNDÜ! <<<\n", flush=True)
+        print("\n>>> ROBOT EN KISA YOLDAN MAVİ BAŞLANGIÇ NOKTASINA DÖNDÜ! <<<\n", flush=True)
 
         # 4. GÖREV VE ERİŞİLEBİLİRLİK DETAYLI RAPORU
         report = task_manager.get_summary_report()
