@@ -169,16 +169,30 @@ class ReachabilityManager:
 
         # 1. Durum: Hedef kapalı odada ve fiziksel olarak ulaşılamaz
         if self.is_inside_enclosed_room((gx, gy)):
-            # Çevresel inceleme (Perimeter Analysis):
-            # Robot kapalı odanın duvarına yaklaştıysa ve farklı açılardan yaklaşmayı denediyse:
-            if dist_to_goal < 1.10 and min(d_left, d_right) < 0.65:
-                # Odanın etrafında keşif yapıldı mı veya duvarlar tamamen kapalı mı?
-                rec.update_status(
-                    GoalStatus.UNREACHABLE,
-                    "Physical Verification: Target is completely sealed inside 4 collision walls. No entry point.",
-                    current_time
-                )
-                return True, "TARGET_UNREACHABLE_SEALED", None
+            # Çevresel inceleme (4-Sided Perimeter Analysis):
+            # Robot 4 tarafı da (Doğu, Güney, Batı, Kuzey) dolaşıp açık bir kapı arar.
+            # Farklı sektörler incelendikten sonra (en az 3 farklı açı sektörü) kesin UNREACHABLE ilan edilir:
+            if dist_to_goal < 1.30 and min(d_left, d_right) < 0.70:
+                # İncelenen açı sektörlerini say (Her 70 derece = 1 sektör)
+                unique_sectors = set(int(math.degrees(a) // 70) for a in rec.explored_perimeter_angles)
+                
+                # Eğer henüz 3 farklı taraf incelenmediyse, hedefin çevresindeki sıradaki cepheye yönlendir:
+                if len(unique_sectors) < 3 and rec.attempts <= 4:
+                    rec.update_status(
+                        GoalStatus.TEMPORARILY_BLOCKED,
+                        f"Perimeter inspection: Exploring other sides ({len(unique_sectors)}/3 sectors checked).",
+                        current_time
+                    )
+                    alt_wp = self._generate_alternative_waypoint(robot_pos, (gx, gy))
+                    self.total_alternatives_found += 1
+                    return False, "PERIMETER_EXPLORE_NEXT_SIDE", alt_wp
+                else:
+                    rec.update_status(
+                        GoalStatus.UNREACHABLE,
+                        "Full Perimeter Verification: Checked all 4 surrounding sides. Completely sealed inside 4 collision walls. No entry point.",
+                        current_time
+                    )
+                    return True, "TARGET_UNREACHABLE_SEALED", None
 
         # 2. Durum: Genel Stagnation (Sıkışma veya geçici engel)
         if self.stagnation_counter >= 3:
@@ -215,16 +229,26 @@ class ReachabilityManager:
         robot_pos: Tuple[float, float],
         goal_pos: Tuple[float, float]
     ) -> Tuple[float, float]:
-        """Engelle karşılaşıldığında hedefin etrafında alternatif bir teğetsel keşif noktası üretir."""
-        rx, ry = robot_pos
+        """Kapalı kutunun 4 cephesini (Doğu, Kuzey, Batı, Güney) sırayla kontrol eden çevre noktaları üretir."""
         gx, gy = goal_pos
-        current_angle = math.atan2(ry - gy, rx - gx)
-        # 60 derece yana açı kaydırmasıyla alternatif açı bul
-        new_angle = current_angle + (math.pi / 3.0)
-        radius = 0.85
-        alt_x = gx + radius * math.cos(new_angle)
-        alt_y = gy + radius * math.sin(new_angle)
-        return alt_x, alt_y
+        rec = self.goals.get(self.active_goal_id) if self.active_goal_id is not None else None
+        
+        # 4 cephe inceleme ofsetleri (Merkez etrafında güvenli 0.95m yarıçap):
+        # 0: Doğu (Sağ), 1: Kuzey (Üst), 2: Batı (Sol), 3: Güney (Alt)
+        inspect_radius = 0.95
+        perimeter_points = [
+            (gx + inspect_radius, gy),          # Doğu cephesi
+            (gx, gy + inspect_radius),          # Kuzey cephesi
+            (gx - inspect_radius, gy),          # Batı cephesi
+            (gx, gy - inspect_radius)           # Güney cephesi
+        ]
+        
+        if rec:
+            rec.attempts += 1
+            idx = rec.attempts % 4
+            return perimeter_points[idx]
+            
+        return perimeter_points[0]
 
     def mark_completed(self, goal_id: int, current_time: float):
         """Hedefin başarıyla tamamlandığını kaydeder."""

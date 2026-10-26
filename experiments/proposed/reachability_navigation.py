@@ -205,9 +205,13 @@ def run_reachability_navigation():
                     sim_step_dist=step_dist
                 )
 
+                if alt_wp is not None:
+                    print(f"\n[KEŞİF] Kapalı kutunun diğer cephesi inceleniyor: {alt_wp}", flush=True)
+                    target_x, target_y = alt_wp
+
                 if should_abort:
                     print(f"\n[DİKKAT] Görev Yöneticisi Kararı: {reason}", flush=True)
-                    print(f"Hedef #{goal_idx} (Kapalı Oda) incelendi ve ERİŞİLEMEZ olarak doğrulandı (COMPLETED SAYILMADI)!", flush=True)
+                    print(f"Hedef #{goal_idx} (Kapalı Oda 4 tarafı da incelendi) ve ERİŞİLEMEZ olarak doğrulandı (COMPLETED SAYILMADI)!", flush=True)
                     robot.stop_motors()
                     time.sleep(0.3)
                     # Duvarın önünde takılıp titrememesi için 0.45m temiz geri açılma:
@@ -246,32 +250,66 @@ def run_reachability_navigation():
 
             tour_pointer += 1
 
-        # C. KESTİRMEDEN MAVİ BAŞLANGIÇ NOKTASINA DÖNÜŞ
-        print("\n>>> Kapalı oda incelemesi tamamlandı! İki duvar arasından doğrudan mavi üsse iniliyor...", flush=True)
-        # Kapalı kutu orta koridorun tepesinde yer aldığından ([start_x + 2.65, start_y + 3.10]),
-        # inceleme biter bitmez doğrudan iki duvarın arasından aşağı inip sol kapıdan mavi üsse varır:
+        # C. KESTİRMEDEN MAVİ BAŞLANGIÇ NOKTASINA DÖNÜŞ (DÜMDÜZ VE EN KISA ÇİZGİ HATTI)
+        print("\n>>> Kapalı oda incelemesi tamamlandı! Mavi üsse dümdüz en kısa hatla iniliyor...", flush=True)
+        # S-kavisini önlemek için ara nokta sayısı azaltıldı:
+        # 1. Orta koridordan doğrudan alt açık kapıya iniş
+        # 2. Kapıdan mavi üsse tek bir dümdüz çizgi halinde varış
         return_waypoints = [
-            [start_x + 2.70, start_y + 1.20],   # Orta koridordan doğrudan aşağı iniş
-            [start_x + 1.00, start_y + 0.35],   # Sol kapıdan çıkış
+            [start_x + 1.80, start_y + 0.30],   # Sol dikey duvarın hemen altındaki açık kapı
             [start_x, start_y]                  # Mavi başlangıç noktası (Depot)
         ]
         for r_pt in return_waypoints:
+            target_rx, target_ry = r_pt
+            
+            # Kavis yapmayı engellemek için önce hedefe yerinde dön (Pivot Align):
+            robot.stop_motors()
+            time.sleep(0.02)
+            for _ in range(70):
+                cur_x, cur_y, cur_yaw = robot.get_pose()
+                visualizer.update_trail(cur_x, cur_y)
+                dx, dy = target_rx - cur_x, target_ry - cur_y
+                target_angle = math.atan2(dy, dx)
+                head_err = normalize_angle(target_angle - cur_yaw)
+                if abs(math.degrees(head_err)) < 3.0:
+                    break
+                t_mag = 1.2 if abs(math.degrees(head_err)) > 20.0 else 0.65
+                if head_err > 0:
+                    robot.set_wheel_velocities(-t_mag, t_mag)
+                else:
+                    robot.set_wheel_velocities(t_mag, -t_mag)
+                time.sleep(0.02)
+
+            robot.stop_motors()
+
+            # Dümdüz çizgi halinde ilerleme:
             for _ in range(350):
                 cur_x, cur_y, cur_yaw = robot.get_pose()
                 visualizer.update_trail(cur_x, cur_y)
-                dx, dy = r_pt[0] - cur_x, r_pt[1] - cur_y
-                if math.hypot(dx, dy) < 0.25:
+                dx, dy = target_rx - cur_x, target_ry - cur_y
+                d_target = math.hypot(dx, dy)
+                if d_target < 0.16:
                     break
+
+                target_angle = math.atan2(dy, dx)
+                head_err = normalize_angle(target_angle - cur_yaw)
+
                 d_left, d_right = robot.read_front_sensors()
-                if avoidance_ctrl.is_obstacle_detected(d_left, d_right):
+                if avoidance_ctrl.is_obstacle_detected(d_left, d_right) and d_target > 0.35:
                     vl, vr = avoidance_ctrl.evaluate(d_left, d_right)
                 else:
-                    vl, vr = tracking_ctrl.evaluate(math.hypot(dx, dy), normalize_angle(math.atan2(dy, dx) - cur_yaw))
-                robot.set_wheel_velocities(vl * 0.75, vr * 0.75)
+                    # Kavis çizmeden cetvel gibi düz gidiş:
+                    base_spd = 1.8 if d_target > 0.30 else 0.9
+                    deg_e = math.degrees(head_err)
+                    steer = max(-0.35, min(0.35, 0.025 * deg_e))
+                    vl = base_spd - steer
+                    vr = base_spd + steer
+
+                robot.set_wheel_velocities(vl, vr)
                 time.sleep(0.02)
 
         robot.stop_motors()
-        print("\n>>> ROBOT EN KISA YOLDAN MAVİ BAŞLANGIÇ NOKTASINA DÖNDÜ! <<<\n", flush=True)
+        print("\n>>> ROBOT DÜMDÜZ EN KISA HATLA MAVİ BAŞLANGIÇ NOKTASINA DÖNDÜ! <<<\n", flush=True)
 
         # 4. GÖREV VE ERİŞİLEBİLİRLİK DETAYLI RAPORU
         report = task_manager.get_summary_report()

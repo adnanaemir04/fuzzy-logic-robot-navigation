@@ -61,7 +61,7 @@ class TestReachabilityManager(unittest.TestCase):
         self.mgr.register_goals(goals, [0.0, 0.0])
         self.mgr.start_goal(0, (2.65, 2.40))  # Odanın hemen dışında
 
-        # Robot duvara yaklaşmış ve engeli görüyor:
+        # 1. İlk yaklaşmada diğer cepheyi keşfetmek için alternatif nokta üretir:
         should_abort, reason, alt_wp = self.mgr.update_progress(
             robot_pos=(2.65, 2.40),
             d_left=0.35,
@@ -69,9 +69,9 @@ class TestReachabilityManager(unittest.TestCase):
             current_time=5.0,
             sim_step_dist=0.01
         )
-        self.assertTrue(should_abort)
-        self.assertEqual(reason, "TARGET_UNREACHABLE_SEALED")
-        self.assertEqual(self.mgr.goals[0].status, GoalStatus.UNREACHABLE)
+        self.assertFalse(should_abort)
+        self.assertEqual(reason, "PERIMETER_EXPLORE_NEXT_SIDE")
+        self.assertIsNotNone(alt_wp)
 
     def test_summary_report(self):
         goals = [[1.0, 1.0], [2.65, 3.10]]
