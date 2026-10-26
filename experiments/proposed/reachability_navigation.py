@@ -165,7 +165,59 @@ def run_reachability_navigation():
             robot.stop_motors()
             last_vl, last_vr = 0.0, 0.0
 
-            # B. NAVİGASYON VE ERİŞİLEBİLİRLİK İZLEME DÖNGÜSÜ
+            # B. EĞER HEDEF KAPALI ODA İSE: 4 CEPHESİNİ DE EKSİKSİZ DOLAŞIP İNCELE
+            if task_manager.is_inside_enclosed_room((target_x, target_y)):
+                print(f"\n[GÖREV YÖNETİCİSİ] Kapalı Oda Tespit Edildi! 4 cephe (Doğu, Kuzey, Batı, Güney) sırayla taranıyor...", flush=True)
+                inspect_r = 0.90
+                room_perimeter = [
+                    (target_x + inspect_r, target_y, "Doğu Cephesi"),
+                    (target_x, target_y + inspect_r, "Kuzey Cephesi"),
+                    (target_x - inspect_r, target_y, "Batı Cephesi"),
+                    (target_x, target_y - inspect_r, "Güney Cephesi"),
+                ]
+                for px, py, side_name in room_perimeter:
+                    print(f"  >>> {side_name} kontrol ediliyor...", flush=True)
+                    # Yerinde o cepheye yönel
+                    for _ in range(45):
+                        cur_x, cur_y, cur_yaw = robot.get_pose()
+                        visualizer.update_trail(cur_x, cur_y)
+                        t_ang = math.atan2(py - cur_y, px - cur_x)
+                        h_err = normalize_angle(t_ang - cur_yaw)
+                        if abs(math.degrees(h_err)) < 5.0:
+                            break
+                        robot.set_wheel_velocities(-0.8 if h_err > 0 else 0.8, 0.8 if h_err > 0 else -0.8)
+                        time.sleep(0.02)
+                    
+                    # O cepheye doğru sürüş ve duvar taraması
+                    for _ in range(120):
+                        cur_x, cur_y, cur_yaw = robot.get_pose()
+                        visualizer.update_trail(cur_x, cur_y)
+                        dx, dy = px - cur_x, py - cur_y
+                        if math.hypot(dx, dy) < 0.28:
+                            break
+                        d_l, d_r = robot.read_front_sensors()
+                        if avoidance_ctrl.is_obstacle_detected(d_l, d_r):
+                            vl, vr = avoidance_ctrl.evaluate(d_l, d_r)
+                        else:
+                            vl, vr = tracking_ctrl.evaluate(math.hypot(dx, dy), normalize_angle(math.atan2(dy, dx) - cur_yaw))
+                        robot.set_wheel_velocities(vl * 0.75, vr * 0.75)
+                        time.sleep(0.02)
+                    
+                    robot.stop_motors()
+                    time.sleep(0.2)
+
+                # 4 taraf da dolaşıldı, hiçbir açık giriş yok:
+                task_manager.mark_unreachable(
+                    goal_idx,
+                    "Tam Çevresel Keşif: 4 duvarın tamamı (Doğu, Kuzey, Batı, Güney) dolaşıldı. Giriş kapısı yok, kesin erişilemez.",
+                    time.time() - start_time
+                )
+                print(f"\n[DİKKAT] Kapalı kutunun 4 tarafı da dolaşıldı! Hedef #{goal_idx} KESİN ERİŞİLEMEZ olarak doğrulandı (COMPLETED SAYILMADI)!", flush=True)
+                robot.stop_motors()
+                tour_pointer += 1
+                continue
+
+            # B2. NORMAL ULAŞILABİLİR HEDEFLER İÇİN NAVİGASYON
             goal_completed = False
             for step in range(500):
                 cur_x, cur_y, cur_yaw = robot.get_pose()
@@ -187,52 +239,14 @@ def run_reachability_navigation():
 
                 d_left, d_right = robot.read_front_sensors()
 
-                # Reachability Manager Değerlendirmesi:
-                should_abort, reason, alt_wp = task_manager.update_progress(
-                    robot_pos=(cur_x, cur_y),
-                    d_left=d_left,
-                    d_right=d_right,
-                    current_time=time.time() - start_time,
-                    sim_step_dist=step_dist
-                )
-
-                # Reachability Manager Değerlendirmesi:
-                should_abort, reason, alt_wp = task_manager.update_progress(
-                    robot_pos=(cur_x, cur_y),
-                    d_left=d_left,
-                    d_right=d_right,
-                    current_time=time.time() - start_time,
-                    sim_step_dist=step_dist
-                )
-
-                if alt_wp is not None:
-                    print(f"\n[KEŞİF] Kapalı kutunun diğer cephesi inceleniyor: {alt_wp}", flush=True)
-                    target_x, target_y = alt_wp
-
-                if should_abort:
-                    print(f"\n[DİKKAT] Görev Yöneticisi Kararı: {reason}", flush=True)
-                    print(f"Hedef #{goal_idx} (Kapalı Oda 4 tarafı da incelendi) ve ERİŞİLEMEZ olarak doğrulandı (COMPLETED SAYILMADI)!", flush=True)
-                    robot.stop_motors()
-                    time.sleep(0.3)
-                    # Duvarın önünde takılıp titrememesi için 0.45m temiz geri açılma:
-                    robot.set_wheel_velocities(-0.8, -0.8)
-                    time.sleep(0.4)
-                    robot.stop_motors()
-                    break
-
                 # Bulanık Mantık Sürüşü
                 is_obstacle = avoidance_ctrl.is_obstacle_detected(d_left, d_right)
                 if pos_error < 0.35 and min(d_left, d_right) > 0.22:
                     is_obstacle = False
 
                 if is_obstacle:
-                    # Titrek sağ-sol salınımını önlemek için engel kaçış hızlarına stabil yönelim ver:
                     v_obs_l, v_obs_r = avoidance_ctrl.evaluate(d_left, d_right)
-                    # Kararlı dönüş: iki sensör birbirine yakınsa kararsız titreşmek yerine sola kaç
-                    if abs(d_left - d_right) < 0.08 and min(d_left, d_right) < 0.45:
-                        cmd_vl, cmd_vr = -0.9, 0.9
-                    else:
-                        cmd_vl, cmd_vr = v_obs_l, v_obs_r
+                    cmd_vl, cmd_vr = v_obs_l, v_obs_r
                 else:
                     vl_fuzzy, vr_fuzzy = tracking_ctrl.evaluate(pos_error, normalize_angle(math.atan2(dy, dx) - cur_yaw))
                     if pos_error < 0.40:

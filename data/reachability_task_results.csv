@@ -1,13 +1,13 @@
 goal_id,position,status,attempts,distance_traveled,min_distance_reached,failure_reason
-0,"(-2.4757983269327157, -0.9498903255988276)",COMPLETED,1,2.544,0.165,Goal reached within tolerance.
-1,"(-1.625798326932716, 0.10010967440117247)",COMPLETED,1,2.578,0.178,Goal reached within tolerance.
-2,"(-0.825798326932716, -0.5998903255988275)",COMPLETED,1,2.108,0.172,Goal reached within tolerance.
-3,"(-1.475798326932716, -1.5998903255988275)",COMPLETED,1,2.396,0.166,Goal reached within tolerance.
-4,"(0.07420167306728387, -1.9498903255988276)",COMPLETED,1,3.471,0.171,Goal reached within tolerance.
-5,"(0.7242016730672842, -0.7998903255988274)",COMPLETED,1,2.584,0.196,Goal reached within tolerance.
-6,"(0.674201673067284, 0.9501096744011726)",UNREACHABLE,1,1.808,1.079,Topology: Target enclosed inside 4-wall sealed room without openings.
-7,"(1.274201673067284, -1.9498903255988276)",COMPLETED,1,2.39,0.221,Goal reached within tolerance.
-8,"(2.1742016730672846, -1.9498903255988276)",COMPLETED,1,2.143,0.173,Goal reached within tolerance.
-9,"(2.324201673067284, -1.4998903255988276)",COMPLETED,1,0.964,0.171,Goal reached within tolerance.
-10,"(2.324201673067284, -0.6998903255988276)",COMPLETED,1,1.623,0.184,Goal reached within tolerance.
-11,"(2.324201673067284, 0.5001096744011724)",COMPLETED,1,2.386,0.177,Goal reached within tolerance.
+0,"(-2.4757028977330173, -0.949904572238019)",COMPLETED,1,2.423,0.211,Goal reached within tolerance.
+1,"(-1.6257028977330172, 0.10009542776198099)",COMPLETED,1,2.641,0.191,Goal reached within tolerance.
+2,"(-0.8257028977330174, -0.599904572238019)",COMPLETED,1,2.109,0.185,Goal reached within tolerance.
+3,"(-1.4757028977330173, -1.599904572238019)",COMPLETED,1,2.232,0.196,Goal reached within tolerance.
+4,"(0.0742971022669825, -1.949904572238019)",COMPLETED,1,3.917,0.16,Goal reached within tolerance.
+5,"(0.7242971022669829, -0.7999045722380189)",COMPLETED,1,2.317,0.251,Goal reached within tolerance.
+6,"(0.6742971022669826, 0.9500954277619811)",UNREACHABLE,5,1.718,1.162,Full Perimeter Verification: Checked all 4 surrounding sides. Completely sealed inside 4 collision walls. No entry point.
+7,"(1.2742971022669827, -1.949904572238019)",COMPLETED,1,2.46,0.186,Goal reached within tolerance.
+8,"(2.174297102266983, -1.949904572238019)",COMPLETED,1,2.091,0.177,Goal reached within tolerance.
+9,"(2.3242971022669825, -1.499904572238019)",COMPLETED,1,0.897,0.207,Goal reached within tolerance.
+10,"(2.3242971022669825, -0.699904572238019)",COMPLETED,1,1.711,0.165,Goal reached within tolerance.
+11,"(2.3242971022669825, 0.5000954277619809)",COMPLETED,1,2.288,0.208,Goal reached within tolerance.
