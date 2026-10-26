@@ -122,34 +122,56 @@ class SceneVisualizer:
             except Exception:
                 pass
 
-    def setup_sketch_environment(self, origin=[0.0, 0.0]):
+    def setup_sketch_environment(self, origin=[0.0, 0.0], with_unreachable_room=False):
         """
         Kullanıcının çizdiği krokinin birebir ortamı:
         - Mavi nokta sol alt köşe (origin: [ox, oy])
-        - 1. Siyah Dikey Duvar (Sol kanat ile orta arasında)
-        - 2. Kırmızı Dikey Duvar (Orta ile sağ kanat arasında)
-        - 3. Kırmızı Dikdörtgen Kutu Engeller (Sol üst, Üst orta, Sağ kanat)
+        - 1. Siyah Sol Dikey Duvar & Kırmızı Sağ Dikey Duvar
+        - 2. Kırmızı Dikdörtgen Kutu Engeller
+        - with_unreachable_room=True ise: En üstteki kutu yerine 4 duvardan oluşan,
+          içinde hedef barındıran, Pioneer robotun asla giremeyeceği tamamen kapalı bir oda oluşturur.
         """
         ox, oy = origin
         
-        # 1. Duvarlar (Siyah Sol Dikey Duvar & Kırmızı Sağ Dikey Duvar)
+        # 1. Ana Dikey Duvarlar (Siyah Sol Dikey Duvar & Kırmızı Sağ Dikey Duvar)
         walls = [
-            # Sol Dikey Duvar (Siyah Çizgi - Çizimde aşağısı açık, Y=0.55'ten Y=2.35'e uzanır, boy: 1.8m):
+            # Sol Dikey Duvar (Siyah Çizgi - Y=0.55'ten Y=2.35'e uzanır, boy: 1.8m):
             {"pos": [ox + 1.60, oy + 1.45], "size": [0.08, 1.8, 0.6], "color": [0.1, 0.1, 0.1]},
-            # Sağ Dikey Duvar (Kırmızı Çizgi - Çizimde aşağısı açık, Y=0.55'ten Y=2.55'e uzanır, boy: 2.0m):
+            # Sağ Dikey Duvar (Kırmızı Çizgi - Y=0.55'ten Y=2.55'e uzanır, boy: 2.0m):
             {"pos": [ox + 3.80, oy + 1.55], "size": [0.08, 2.0, 0.6], "color": [0.9, 0.1, 0.1]},
         ]
+
+        if with_unreachable_room:
+            # 4 DUVARLI TAMAMEN KAPALI HEDEF ALANI (En üstteki kırmızı kutu yerine)
+            # Oda Merkezi: [ox + 2.65, oy + 3.10]
+            # Boyutlar: 0.9m x 0.9m kare oda, duvar kalınlığı: 0.08m, yükseklik: 0.6m
+            # Boşluk: 0 mm (Pioneer geçemez, tamamen kapalı)
+            cx, cy = ox + 2.65, oy + 3.10
+            half_side = 0.45
+            walls.extend([
+                # Güney duvarı (Alt)
+                {"pos": [cx, cy - half_side], "size": [0.90, 0.08, 0.6], "color": [0.95, 0.1, 0.1]},
+                # Kuzey duvarı (Üst)
+                {"pos": [cx, cy + half_side], "size": [0.90, 0.08, 0.6], "color": [0.95, 0.1, 0.1]},
+                # Batı duvarı (Sol)
+                {"pos": [cx - half_side, cy], "size": [0.08, 0.90, 0.6], "color": [0.95, 0.1, 0.1]},
+                # Doğu duvarı (Sağ)
+                {"pos": [cx + half_side, cy], "size": [0.08, 0.90, 0.6], "color": [0.95, 0.1, 0.1]},
+            ])
+
         self.add_walls(walls)
 
-        # 2. Kırmızı Dikdörtgen Kutu Engeller (Kullanıcı çizimi):
+        # 2. Kırmızı Dikdörtgen Kutu Engeller:
         red_boxes = [
             # Sol üstteki kare/dikdörtgen kırmızı kutu (G1 ve G2 arasında, sol duvarın solunda):
             {"pos": [ox + 1.15, oy + 2.70], "size": [0.45, 0.40, 0.5]},
-            # Üst ortadaki dikey kırmızı kutu (G2 ve G4 arasında - üstten kestirme dönüş için ferah koridor):
-            {"pos": [ox + 2.65, oy + 3.25], "size": [0.35, 0.50, 0.5]},
             # Sağdaki yatay kırmızı kutu (Sağ duvarın sağında, G8 ile G9 arasında yatay dikdörtgen):
             {"pos": [ox + 4.90, oy + 2.05], "size": [0.75, 0.35, 0.5]},
         ]
+        # Eğer kapalı oda yoksa orijinal üst ortadaki kutuyu ekle:
+        if not with_unreachable_room:
+            red_boxes.append({"pos": [ox + 2.65, oy + 3.25], "size": [0.35, 0.50, 0.5]})
+
         for i, box in enumerate(red_boxes):
             try:
                 bx, by = box['pos']
@@ -158,9 +180,13 @@ class SceneVisualizer:
                 self.sim.setObjectPosition(b, -1, [float(bx), float(by), sz / 2.0])
                 self.sim.setShapeColor(b, '', self.sim.colorcomponent_ambient_diffuse, [0.95, 0.1, 0.1])
                 self.sim.setObjectAlias(b, f"SketchRedBox_{i+1}")
+                props = (self.sim.objectspecialproperty_collidable | 
+                         self.sim.objectspecialproperty_measurable | 
+                         self.sim.objectspecialproperty_detectable | 
+                         self.sim.objectspecialproperty_renderable)
+                self.sim.setObjectSpecialProperty(b, props)
+                self.sim.setObjectInt32Param(b, self.sim.shapeintparam_respondable, 1)
                 self.obstacle_handles.append(b)
-            except Exception:
-                pass
             except Exception:
                 pass
 

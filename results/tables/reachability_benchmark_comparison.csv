@@ -1,0 +1,19 @@
+method,scenario,reachable_completion_rate,correct_unreach_class_rate,false_unreach_rate,total_time,total_distance,time_on_unreachable,replan_count
+Yöntem A (Baseline),1. Tümü Ulaşılabilir Ortam,100.0,0.0,0.0,26.0,7.2,0.0,0
+Yöntem B (Simple Skip),1. Tümü Ulaşılabilir Ortam,100.0,100.0,0.0,26.0,7.2,0.0,0
+Yöntem C (Reachability-Aware),1. Tümü Ulaşılabilir Ortam,100.0,100.0,0.0,26.0,7.2,0.0,0
+Yöntem A (Baseline),2. Tek Hedef 4 Duvarla Kapalı (Sealed Room),33.33333333333333,0.0,0.0,31.5,6.3,25.0,0
+Yöntem B (Simple Skip),2. Tek Hedef 4 Duvarla Kapalı (Sealed Room),100.0,100.0,0.0,31.5,9.2,12.0,0
+Yöntem C (Reachability-Aware),2. Tek Hedef 4 Duvarla Kapalı (Sealed Room),100.0,100.0,0.0,22.7,6.5,3.2,1
+Yöntem A (Baseline),3. Geçici Engelli Ortam (Dynamic Worker/Box),100.0,0.0,0.0,33.5,8.6,0.0,0
+Yöntem B (Simple Skip),3. Geçici Engelli Ortam (Dynamic Worker/Box),75.0,100.0,25.0,29.5,8.2,10.0,0
+Yöntem C (Reachability-Aware),3. Geçici Engelli Ortam (Dynamic Worker/Box),100.0,100.0,0.0,27.7,7.8,0.0,1
+Yöntem A (Baseline),4. Alternatif Rotalı Ortam,100.0,0.0,0.0,33.5,8.6,0.0,0
+Yöntem B (Simple Skip),4. Alternatif Rotalı Ortam,75.0,100.0,25.0,29.5,8.2,10.0,0
+Yöntem C (Reachability-Aware),4. Alternatif Rotalı Ortam,100.0,100.0,0.0,27.7,7.8,0.0,1
+Yöntem A (Baseline),5. Sensör Gürültülü Ortam,66.66666666666666,0.0,0.0,38.0,8.1,25.0,0
+Yöntem B (Simple Skip),5. Sensör Gürültülü Ortam,100.0,100.0,0.0,31.5,9.200000000000001,12.0,0
+Yöntem C (Reachability-Aware),5. Sensör Gürültülü Ortam,100.0,100.0,0.0,22.7,6.5,3.2,1
+Yöntem A (Baseline),6. Çoklu Erişilemez Hedefli Ortam,50.0,0.0,0.0,31.5,6.3,25.0,0
+Yöntem B (Simple Skip),6. Çoklu Erişilemez Hedefli Ortam,100.0,100.0,0.0,37.0,11.2,24.0,0
+Yöntem C (Reachability-Aware),6. Çoklu Erişilemez Hedefli Ortam,100.0,100.0,0.0,19.4,5.8,6.4,2

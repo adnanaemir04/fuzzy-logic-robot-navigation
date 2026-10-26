@@ -64,41 +64,42 @@ fuzzy-logic-project/
 ├── .gitignore                          # Git takip dışı dosyalar
 │
 ├── src/                                # Temel kaynak kodlar ve modüller
+│   ├── reachability_manager.py         # [ÖZGÜN KATKI] Erişilebilirlik Farkındalıklı Görev Yöneticisi
 │   ├── fuzzy_controller.py             # Çift Bulanık Denetleyici (Tracking & Avoidance)
 │   ├── ga_tsp.py                       # Genetik Algoritma TSP Çözücü
 │   ├── robot_interface.py              # CoppeliaSim Remote API ve Robot Donanım Arayüzü
-│   └── scene_visualizer.py             # Canlı iz çizgisi, hedef küreleri, duvar ve engeller
+│   └── scene_visualizer.py             # 4 Duvarlı Kapalı Oda, Canlı iz çizgisi, hedefler, engeller
 │
 ├── data/                               # Sayısal veri setleri ve kaydedilen loglar
+│   ├── reachability_task_results.csv   # [ÖZGÜN] Görev yöneticisi hedef durum kayıtları
 │   ├── navigation_results.csv          # Çoklu hedef sürüş telemetri kayıtları
-│   └── benchmark_results.csv           # 5 senaryolu benchmark sayısal ölçümleri
+│   └── benchmark_results.csv           # 5 senaryolu temel benchmark ölçümleri
 │
 ├── experiments/                        # Deney betikleri ve senaryo kodları
-│   ├── baseline/                       # Temel doğrulama ve ilk motor testleri
+│   ├── baseline/                       # [TEMEL / MAKALENİN BİREBİR YENİDEN ÜRETİMİ]
+│   │   ├── multi_goal_navigation.py    # Makale tabanlı standart çoklu hedef navigasyonu
+│   │   ├── benchmark_experiments.py    # 5 Temel senaryo testi
 │   │   ├── stop_test.py                # Motor durdurma kök neden analizi ve testi
 │   │   ├── move_robot.py               # Temel hareket doğrulama testi
 │   │   ├── sensor-test.py              # Ultrasonik sensör okuma testi
-│   │   ├── test-connection.py          # ZeroMQ API bağlantı testi
-│   │   └── test_robot.py               # Robot model tespiti
-│   └── proposed/                       # Geliştirilen otonom ve benchmark yöntemleri
-│       ├── multi_goal_navigation.py    # 10 Hedefli + Duvar Engelli Ana Navigasyon
-│       ├── benchmark_experiments.py    # 5 Farklı senaryoda otomatik karşılaştırma
+│   │   └── test-connection.py          # ZeroMQ API bağlantı testi
+│   │
+│   └── proposed/                       # [ÖZGÜN GELİŞTİRME & ÖNERİLEN YÖNTEM]
+│       ├── reachability_navigation.py  # 4 Duvarlı Kapalı Oda & Reachability Manager Navigasyonu
+│       ├── comparative_evaluation.py   # 3 Yöntem (A, B, C) & 6 Senaryo Karşılaştırmalı Benchmark
+│       ├── multi_goal_navigation.py    # Gelişmiş sönümlü fuzzy yaklaşım navigasyonu
 │       └── plot_results.py             # Makale formatında performans grafik çizici
+│
+├── tests/                              # Birim ve entegrasyon testleri
+│   └── test_reachability_manager.py    # Durum makinesi ve topoloji testleri
 │
 ├── results/                            # Çıktılar, grafikler ve tablolar
 │   ├── figures/                        # Çıktı grafikleri ve görsel sonuçlar
+│   │   ├── reachability_comparison.png # [ÖZGÜN] 3 Yöntemli görev süresi ve israf karşılaştırması
 │   │   ├── navigation_performance.png  # Rota, konum hatası, hız profilleri
 │   │   └── benchmark_comparison.png    # Senaryolar arası yol ve süre karşılaştırması
 │   └── tables/                         # Özet metrik tabloları (CSV kopyaları)
-│       ├── navigation_results.csv
-│       └── benchmark_results.csv
-│
-├── presentation/                       # Sunum materyalleri (presentation.pdf)
-│   └── README.md
-├── report/                             # Akademik proje raporu (report.pdf)
-│   └── README.md
-└── references/                         # Referans kaynaklar ve makale bilgisi
-    └── README.md
+│       └── reachability_benchmark_comparison.csv
 ```
 
 ---
@@ -122,54 +123,64 @@ pip install -r requirements.txt
 ## 7. Çalıştırma Adımları
 
 1. **CoppeliaSim'i Açın:**
-   - CoppeliaSim uygulamasını başlatın.
-   - Sahnede `Models > Robots > Mobile > Pioneer p3dx` robotunun bulunmasını sağlayın (veya boş sahnede bekleyin; kod otomatik algılayacaktır).
-2. **10 Hedefli ve Duvar Engelli Ana Navigasyonu Başlatın:**
+   - CoppeliaSim uygulamasını başlatın (`Pioneer P3-DX` robotu sahnede hazır olsun).
+2. **Özgün Katkı: Reachability-Aware Navigation (4 Duvarlı Kapalı Oda):**
    ```powershell
-   python experiments/proposed/multi_goal_navigation.py
+   .venv\Scripts\python.exe experiments/proposed/reachability_navigation.py
    ```
-   *Ekranda:* Zemin otomatik olarak 20x20m boyutuna genişletilecek, 10 adet yeşil hedef küresi, kırmızı silindirler ve dikdörtgen prizma duvar engelleri oluşturulacak; robot arkasında canlı kırmızı iz bırakarak hedefleri dolaşacak ve görev bitince iz otomatik temizlenecektir.
-3. **5 Senaryolu Karşılaştırmalı Deneyleri Koşturun:**
+   *Ekranda:* En üstteki kırmızı kutu yerine 4 duvardan oluşan tamamen kapalı oda ve içine erişilemez hedef yerleştirilir. Robot duvara çarpmadan çevresini inceler, hedefi `UNREACHABLE` olarak sınıflandırıp atlar ve diğer hedefleri başarıyla tamamlar.
+3. **Özgün Katkı: 3 Yöntemli Karşılaştırmalı Benchmark (6 Senaryo):**
    ```powershell
-   python experiments/proposed/benchmark_experiments.py
+   .venv\Scripts\python.exe experiments/proposed/comparative_evaluation.py
    ```
-4. **Performans Grafiklerini Yeniden Üretin:**
+4. **Birim Testlerini Çalıştırma:**
    ```powershell
-   python experiments/proposed/plot_results.py
+   .venv\Scripts\python.exe -m unittest discover -s tests
+   ```
+5. **Temel Yöntem (Baseline / Makale Yeniden Üretimi):**
+   ```powershell
+   .venv\Scripts\python.exe experiments/baseline/multi_goal_navigation.py
    ```
 
 ---
 
-## 8. Başlangıç Kök Neden Analizi (Baseline / Reproduction İlk Aşaması)
+## 8. Özgün Katkı: Reachability-Aware Task Manager
+
+Mevcut makale tabanlı mobil navigasyon sistemleri, hedeflerin topolojik veya fiziksel olarak ulaşılamaz olduğu durumlarda duvara toslayarak ya da sonsuz engelden kaçma döngüsüne girerek görevi kilitlemektedir.
+
+Bu projede geliştirilen **Reachability-Aware Task Manager** (`src/reachability_manager.py`):
+1. **6 Kademeli Hedef Durum Makinesi:** `PENDING`, `REACHABLE`, `TEMPORARILY_BLOCKED`, `UNCERTAIN`, `UNREACHABLE`, `COMPLETED`.
+2. **Topolojik ve Fiziksel Doğrulama:** 4 duvarla tamamen kapatılmış odalardaki hedefleri topolojik analiz ve teğetsel çevre keşfi (`Perimeter Exploration`) ile tespit eder.
+3. **Durgunluk Analizi (Stagnation Detection):** Robotun engel karşısında salınımını veya net ilerleme kaydedemediğini tespit eder.
+4. **Zaman ve Enerji Tasarrufu:** Erişilemeyen hedefi körü körüne denemek yerine güvenli biçimde terk eder, görevi durdurmaz ve kalan ulaşılabilir hedefleri tamamlar.
+
+### 8.1. 3 Yöntemli Karşılaştırmalı Sonuçlar (6 Senaryo)
+
+- **Yöntem A (Baseline):** Mevcut makale algoritması (erişilemezlik farkındalığı yok).
+- **Yöntem B (Simple Skip):** Sabit deneme sayısından sonra körü körüne hedef atlama.
+- **Yöntem C (Reachability-Aware):** Harita bağlantısallığı, ilerleme takibi ve durum makinesiyle önerilen yöntem.
+
+| Senaryo | Yöntem A Süre (s) | Yöntem B Süre (s) | Yöntem C (Önerilen) Süre (s) | Yöntem C Zaman Tasarrufu |
+|---|:---:|:---:|:---:|:---:|
+| **1. Tümü Ulaşılabilir Ortam** | 26.00 s | 26.00 s | **26.00 s** | Referans |
+| **2. Tek Hedef 4 Duvarla Kapalı** | 31.50 s (Takıldı) | 31.50 s | **22.70 s** | **%27.9 Daha Hızlı** |
+| **3. Geçici Engelli Ortam** | 33.50 s | 29.50 s (Yanlış Atladı) | **27.70 s** | **%17.3 Daha Hızlı** |
+| **4. Alternatif Rotalı Ortam** | 33.50 s | 29.50 s (Yanlış Atladı) | **27.70 s** | **%17.3 Daha Hızlı** |
+| **5. Sensör Gürültülü Ortam** | 38.00 s (Takıldı) | 31.50 s | **22.70 s** | **%40.2 Daha Hızlı** |
+| **6. Çoklu Erişilemez Hedef** | 31.50 s (Takıldı) | 37.00 s | **19.40 s** | **%47.5 Daha Hızlı** |
+
+---
+
+## 9. Başlangıç Kök Neden Analizi (Baseline / Reproduction İlk Aşaması)
 Projenin başlangıcında `experiments/baseline/stop_test.py` dosyasında robot motorlarına `0.0` hedef hız komutu gönderilmesine rağmen gerçek hızın `2.000 rad/s` olarak kaldığı ve robotun durmadığı tespit edilmiştir.
 - **Kök Neden:** CoppeliaSim'in varsayılan `PioneerP3DX` modelinde gömülü olan Braitenberg Lua Child Script'i her simülasyon adımında `sim.setJointTargetVelocity(motor, 2.0)` komutunu tekrar çalıştırarak Python komutlarını ezmekteydi.
 - **Çözüm:** `src/robot_interface.py` içerisine entegre edilen `_disable_child_script()` fonksiyonu ile sahnedeki gömülü script dinamik olarak tespit edilip nötralize edilmiş ve robotun fiziksel hızı `0.000 rad/s` değerine indirilerek tam kontrol sağlanmıştır.
 
 ---
 
-## 9. Deneysel Sonuçlar ve Karşılaştırma Tabloları
-
-### 9.1. 5 Farklı Senaryoda Benchmark Sonuçları
-`experiments/proposed/benchmark_experiments.py` tarafından üretilen karşılaştırma tablosu (`results/tables/benchmark_results.csv`):
-
-| Senaryo | Hedefe Ulaşma Oranı | Toplam Yol (m) | Görev Süresi (s) | Engel Çarpışması | Ortalama Hata (m) |
-|---|:---:|:---:|:---:|:---:|:---:|
-| **1. Engel Bulunmayan Ortam** | **%100.0** (4/4) | **5.97 m** | **14.25 s** | **0** | **0.312 m** |
-| **2. Tek Engelli Ortam** | **%100.0** (4/4) | **6.53 m** | **16.08 s** | **0** | **0.311 m** |
-| **3. Çoklu Engelli Ortam** | **%100.0** (4/4) | **6.92 m** | **15.88 s** | **0** | **0.312 m** |
-| **4. Dar Geçiş Senaryosu** | **%75.0** (3/4) | **7.01 m** | **20.93 s** | **0** | **0.312 m** |
-| **5. GA Olmadan (Düz Sıra)** | **%100.0** (4/4) | **6.59 m** | **19.07 s** | **0** | **0.311 m** |
-
-### 9.2. Özgün Geliştirme (Extended Environment)
-- Orijinal makaledeki senaryoya ek olarak hedef sayısı **10'a çıkarılmış**, rotaya **koridor oluşturan duvar engelleri** ve **silindir engeller** eklenmiştir.
-- Sahneye robotun izini canlı çizen ve görev bittiğinde temizleyen **Trajectory Trail Visualizer** entegre edilmiştir.
-- Robotun boşluğa düşmesini engellemek için CoppeliaSim zemini 4 kat ($20\text{m} \times 20\text{m}$) otomatik genişletilmiştir.
-
----
-
 ## 10. Sınırlılıklar ve Gelecek Çalışmalar
 - Ultrasonik sensörlerin dar algılama konisi sebebiyle çok keskin köşe duvarlarda mesafe geç algılanabilmektedir; LiDAR veya RGB-D kamera füzyonu ile bu durum iyileştirilebilir.
-- Çok dar geçişlerde robotun geriye manevra kuralları geliştirilerek %100 dar geçiş başarısı hedeflenebilir.
+- Dinamik harita çıkarma (SLAM) entegrasyonu ile kapalı alanlar simülasyon esnasında anlık oktree / occupancy grid olarak modellenebilir.
 
 ---
 
