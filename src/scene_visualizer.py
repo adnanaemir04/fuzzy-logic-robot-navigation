@@ -144,9 +144,9 @@ class SceneVisualizer:
         # 2. Kırmızı Dikdörtgen Kutu Engeller (Kullanıcı çizimi):
         red_boxes = [
             # Sol üstteki kare/dikdörtgen kırmızı kutu (G1 ve G2 arasında, sol duvarın solunda):
-            {"pos": [ox + 1.15, oy + 2.50], "size": [0.45, 0.40, 0.5]},
-            # Üst ortadaki dikey kırmızı kutu (G2 ve G4 arasında en tepede):
-            {"pos": [ox + 2.65, oy + 2.80], "size": [0.35, 0.60, 0.5]},
+            {"pos": [ox + 1.15, oy + 2.70], "size": [0.45, 0.40, 0.5]},
+            # Üst ortadaki dikey kırmızı kutu (G2 ve G4 arasında - üstten kestirme dönüş için ferah koridor):
+            {"pos": [ox + 2.65, oy + 3.25], "size": [0.35, 0.50, 0.5]},
             # Sağdaki yatay kırmızı kutu (Sağ duvarın sağında, G8 ile G9 arasında yatay dikdörtgen):
             {"pos": [ox + 4.90, oy + 2.05], "size": [0.75, 0.35, 0.5]},
         ]

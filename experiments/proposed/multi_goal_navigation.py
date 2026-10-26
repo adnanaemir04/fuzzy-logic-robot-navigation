@@ -118,14 +118,20 @@ def run_navigation():
         ordered_goals = [goal_points[i] for i in best_tour]
         
         # Görev tamamlandıktan sonra başlangıç üssüne (Mavi nokta) doğrudan en kısa dönüş:
-        # Düğümlerin üzerinden tekrar geçilmez. Sadece sağ kanattan dönerken dikey duvarlara
-        # toslamamak için alt açık koridordan (y ~ 0.0) dümdüz kestirmeden başlangıca akar:
+        # Son hedef G10 ([start_x + 4.30, start_y + 2.65]) sağ üst açık alanda tamamlandığında:
+        # 1. Sola dönüp sağ duvarın üstünden orta koridora girer (X ~ 2.70).
+        # 2. Tekrar yukarıdan dolanmak yerine, iki duvar arasındaki orta koridordan doğrudan aşağı iner.
+        # 3. Sol duvarın altındaki açık kapıdan çıkarak en kısa çapraz hatla başlangıç üssüne (Mavi nokta) varır:
         last_goal = ordered_goals[-1]
         if last_goal[0] > start_x + 1.8:
-            # Sağ kanattan veya orta koridordan alt boş koridor hizasından kestirme geçiş noktası
-            ordered_goals.append([start_x + 1.80, start_y - 0.10])
+            # 1. Aşama: G10'dan sola dönüş - Sağ duvarın üstünden orta koridora giriş:
+            ordered_goals.append([start_x + 2.80, start_y + 2.75])
+            # 2. Aşama: İki duvar arasından (orta koridordan) doğrudan aşağı iniş:
+            ordered_goals.append([start_x + 2.70, start_y + 1.20])
+            # 3. Aşama: Sol duvarın alt kapısından (Y < 0.55 açık kapı) sol tarafa çıkış:
+            ordered_goals.append([start_x + 1.00, start_y + 0.35])
 
-        ordered_goals.append([start_x, start_y])  # Başlangıç noktasına doğrudan varış (Mavi nokta)
+        ordered_goals.append([start_x, start_y])  # Başlangıç noktasına doğrudan en kısa varış (Mavi nokta)
 
         print(f"[GA] Optimum Rota Belirlendi: Ziyaret Sırası = {best_tour} -> Kestirmeden Mavi Noktaya Dönüş", flush=True)
         print(f"[GA] Tahmini Rota Mesafesi: {est_distance:.2f} m\n", flush=True)
