@@ -1,7 +1,7 @@
 # Çoklu Hedef Otonom Robot Navigasyonu için Bulanık Mantık ve Genetik Algoritma Tabanlı Kontrol Stratejisi
 
 > **Proje Türü:** Bilimsel Makale Yeniden Üretimi (Reproduction) ve Özgün Geliştirme  
-> **Öğrenci / Geliştirici:** Emir Kırılmış (`adnanemir04`)  
+> **Öğrenci / Geliştirici:** Adnan Emir Kırım  
 > **E-posta:** emirkirimis5101@gmail.com  
 > **Simülasyon Ortamı:** CoppeliaSim Edu v4.9.0  
 > **Robot Platformu:** Pioneer P3-DX Diferansiyel Sürüşlü Mobil Robot  
