@@ -1,9 +1,24 @@
-cbor==1.0.0
+# ==============================================================================
+# Fuzzy Logic & Genetic Algorithm Autonomous Robot Navigation
+# Dependencies & Package Requirements
+# Compatible with: Python 3.10, 3.11, 3.12, 3.13 (64-bit)
+# ==============================================================================
+
+# CoppeliaSim ZeroMQ Remote API Client & Communication
 coppeliasim-zmqremoteapi-client==2.0.4
-matplotlib==3.11.2
-numpy==2.5.4
 pyzmq==27.2.0
+cbor==1.0.0
+
+# Fuzzy Logic System & Scientific Computing
 scikit-fuzzy==0.5.0
 scipy==1.18.1
-python-dateutil==2.9.0.post0
+numpy==2.5.4
+
+# Data Visualization & Plotting (Figure Generation)
+matplotlib==3.11.2
 pillow==12.3.0
+python-dateutil==2.9.0.post0
+cycler==0.12.1
+fonttools==4.66.1
+kiwisolver==1.5.1
+contourpy==1.4.0
