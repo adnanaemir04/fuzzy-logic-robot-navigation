@@ -16,12 +16,14 @@
 ---
 
 ## 2. Student Information (Öğrenci Bilgileri)
-* **Öğrenci Adı Soyadı:** Emir Kırılmış
-* **Öğrenci Numarası:** *(Öğrenci No)*
+* **Öğrenci Adı Soyadı:** Adnan Emir Kırılmış
 * **E-posta:** [emirkirimis5101@gmail.com](mailto:emirkirimis5101@gmail.com)
 * **GitHub Kullanıcı Adı:** [@adnanemir04](https://github.com/adnanemir04)
-* **Ders:** Bulanık Mantık ve Yapay Zeka Sistemleri
-* **Dönem / Yıl:** 2025 – 2026 Güz Dönemi
+* **Ders:** Bulanık Mantık ve Yapay Zeka Sistemleri (Bulanık Mantık Projesi 2026-2027)
+* **Eğitmen:** Prof. Dr. Rüya ŞAMLI
+* **Asistan Eğitmen:** Arş. Gör. Tolgahan ÖZTÜRK
+* **Teknik Proje Raporu (11 Sayfa, IEEE):** [report/report.pdf](report/report.pdf) | [report/README.md](report/README.md)
+* **Akademik Proje Sunumu (12 Slayt):** [presentation/presentation.pdf](presentation/presentation.pdf) | [presentation/README.md](presentation/README.md)
 
 ---
 
